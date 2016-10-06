@@ -235,4 +235,4 @@ interface PAllContext {
 
 
 // tests
-import './Promise.spec';
+// import './Promise.spec';
