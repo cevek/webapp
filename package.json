@@ -11,6 +11,8 @@
   "devDependencies": {
     "@types/classnames": "0.0.30",
     "@types/jasmine": "^2.2.34",
+    "@types/koa": "^2.0.33",
+    "@types/koa-static": "^2.0.21",
     "@types/node": "^6.0.42",
     "@types/react": "^0.14.37",
     "@types/react-addons-test-utils": "^0.14.15",
@@ -30,8 +32,11 @@
     "karma-jasmine": "^1.0.2",
     "karma-sourcemap-loader": "^0.3.7",
     "karma-webpack": "^1.8.0",
+    "koa": "^2.0.0",
+    "koa-static": "^2.0.0",
     "mobx": "^2.5.2",
     "mobx-react": "^3.5.7",
+    "node-fetch": "^1.6.3",
     "node-sass": "^3.10.1",
     "postcss-loader": "^0.13.0",
     "react": "^15.3.2",
@@ -42,6 +47,7 @@
     "style-loader": "^0.13.1",
     "ts-loader": "^0.8.2",
     "typescript": "^2.1.0-dev.20160930",
+    "universal-webpack": "^0.1.40",
     "url-loader": "^0.5.7",
     "webpack": "^1.13.2",
     "webpack-dev-server": "^1.16.1"

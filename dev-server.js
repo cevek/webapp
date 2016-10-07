@@ -1,8 +1,8 @@
-var WebpackDevServer = require("webpack-dev-server");
-var webpack = require("webpack");
-var wpConfig = require('./webpack.config');
+const WebpackDevServer = require("webpack-dev-server");
+const webpack = require("webpack");
+const wpConfig = require('./webpack/webpack.config.client.js');
 
-var server = new WebpackDevServer(webpack(wpConfig), {
+const server = new WebpackDevServer(webpack(wpConfig), {
     publicPath: wpConfig.output.publicPath,
     hot: true,
     historyApiFallback: true,
@@ -13,9 +13,9 @@ var server = new WebpackDevServer(webpack(wpConfig), {
         // minimal logging
         assets: false,
         colors: true,
-        // version: false,
-        // hash: false,
-        // timings: false,
+        version: false,
+        hash: false,
+        timings: false,
         chunks: false,
         chunkModules: false,
         children: false

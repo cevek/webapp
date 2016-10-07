@@ -375,12 +375,12 @@ export class Router {
     }
 }
 
-interface ReactViewProps {
+interface RouterViewProps {
     history: UrlHistory;
     indexRoute: PublicRoute;
 }
 
-export class RouterView extends React.Component<ReactViewProps, {}> {
+export class RouterView extends React.Component<RouterViewProps, {}> {
     router: Router;
 
     update = () => {
@@ -406,6 +406,26 @@ export class RouterView extends React.Component<ReactViewProps, {}> {
     }
 }
 
+
+interface ServerRouterViewProps {
+    history: UrlHistory;
+    router: Router;
+}
+export class ServerRouterView extends React.Component<ServerRouterViewProps, {}> {
+    render() {
+        const router = this.props.router;
+        const routes = router.routeStack;
+        let Component: React.ReactElement<{}> | null = null;
+        for (let i = routes.length - 1; i >= 0; i--) {
+            const route = routes[i];
+            const enterData = router.routeStackEnterData[i];
+            Component = React.createElement(route.component, enterData, Component!)
+        }
+        console.log('render', Component, routes);
+        return Component!;
+    }
+}
+
 abstract class UrlHistory {
     abstract history: History;
 
@@ -419,7 +439,7 @@ abstract class UrlHistory {
 
     private onChangeCallbacks: (()=>void)[] = [];
 
-    protected onPopState = (event: PopStateEvent) => {
+    protected onPopState = () => {
         for (let i = 0; i < this.onChangeCallbacks.length; i++) {
             const callback = this.onChangeCallbacks[i];
             callback();
@@ -463,7 +483,7 @@ export class BrowserHistory extends UrlHistory {
     history = window.history;
 
     getCurrentUrl() {
-        return new Url({url: window.location.pathname + window.location.search, state: history.state})
+        return new Url({url: window.location.pathname + window.location.search, state: this.history.state})
     }
 
     listen() {
@@ -471,6 +491,33 @@ export class BrowserHistory extends UrlHistory {
     }
 }
 
+export class NodeHistory extends UrlHistory {
+    history = {
+        length: 0,
+        state: null as any,
+        back(){},
+        forward(){},
+        go(){},
+        pushState(){},
+        replaceState(){},
+        scrollRestoration: null as any
+    };
+
+    currentHref: string;
+
+    setCurrentHref(href: string) {
+        this.currentHref = href;
+        this.onPopState();
+    }
+
+    getCurrentUrl() {
+        return new Url({url: this.currentHref, state: this.history.state})
+    }
+
+    listen() {
+
+    }
+}
 
 interface IURL {
     url?: string;
