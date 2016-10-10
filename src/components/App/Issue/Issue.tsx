@@ -13,13 +13,9 @@ interface IssueProps {
 export class Issue extends React.Component<IssueProps, {}> {
     static resolve(props: IssueProps) {
         return new IssueFull(props.params.id).fetch().then(issue => {
+            headerVM.title = issue.title;
             props.issue = issue;
         });
-    }
-
-
-    componentWillMount(): void {
-        headerVM.title = this.props.issue.title;
     }
 
     render() {

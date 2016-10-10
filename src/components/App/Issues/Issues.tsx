@@ -17,14 +17,8 @@ interface IssuesProps {
 export class Issues extends React.Component<IssuesProps, {}> {
     static resolve(props: IssuesProps) {
         return new IssuesStore().fetch().then(issues => {
+            headerVM.title = "Issues: " + issues.items.length;
             props.issues = issues;
-        });
-    }
-
-    componentWillMount(): void {
-        autorun(() => {
-            console.log('setTitle');
-            headerVM.title = "Issues: " + this.props.issues.items.length;
         });
     }
 
@@ -33,7 +27,6 @@ export class Issues extends React.Component<IssuesProps, {}> {
     }
 
     render() {
-        console.log(this.props.issues);
         return (
             <div className={classNames(styles.issues)}>
                 <ul>

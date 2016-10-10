@@ -3,8 +3,8 @@ import {config} from "../config";
 import {UserComment, UserCommentJSON} from "./UserComment";
 
 export class UserCommentStore {
-    url = `https://api.github.com/repos/${config.company}/${config.repo}/issues/${this.id}/comments`;
-    items: UserComment[];
+    url = `https://api.github.com/repos/${config.company}/${config.repo}/issues/${this.id}/comments?client_id=${config.clientId}&client_secret=${config.clientSecret}`;
+    items: UserComment[] = [];
 
     constructor(public id: number) {}
 
@@ -16,7 +16,9 @@ export class UserCommentStore {
     fetch() {
         const p = new FastPromise<this>();
         fetch(this.url).then((response: any) => response.json()).then((userCommentsJSON: UserCommentJSON[]) => {
-            this.fromJSON(userCommentsJSON);
+            if (userCommentsJSON.constructor == Array) {
+                this.fromJSON(userCommentsJSON);
+            }
             p.resolve(this);
         })
         return p;

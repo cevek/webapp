@@ -12,7 +12,7 @@ const htmlPluginConfig = {
 
 
 module.exports = {
-    entry: root + 'src/index.tsx',
+    entry: './src/index.tsx',
     output: {
         path: root + 'dist',
         publicPath: '/',
@@ -27,11 +27,11 @@ module.exports = {
         loaders: [
             {
                 test: /\.tsx?$/,
-                loader: "ts-loader"
+                loader: "autocss!ts-loader"
             },
             {
                 test: /\.scss/,
-                loader: ExtractTextPlugin.extract('style-loader', 'css?sourceMap&camelCase&modules&importLoaders=1&&localIdentName=[local]-[hash:base64:2]!sass?sourceMap'),
+                loader: ExtractTextPlugin.extract('style-loader', 'css?sourceMap!sass?sourceMap'),
             },
             {
                 test: /\.(png|svg|gif|woff2|woff|ttf)$/,
@@ -42,6 +42,11 @@ module.exports = {
                 loader: "file-loader"
             },
         ],
+    },
+
+    autoCssLoader: {
+        syntax: 'scss',
+        excludes: [require('autocss-loader/bootstrap-classnames')]
     },
 
     plugins: [

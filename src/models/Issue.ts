@@ -65,7 +65,7 @@ export class Issue {
 }
 
 export class IssueFull extends Issue {
-    private url = `https://api.github.com/repos/${config.company}/${config.repo}/issues/${this.number}`;
+    private url = `https://api.github.com/repos/${config.company}/${config.repo}/issues/${this.number}?client_id=${config.clientId}&client_secret=${config.clientSecret}`;
 
     userComments: UserCommentStore;
     closedBy: User;

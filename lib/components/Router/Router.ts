@@ -277,7 +277,7 @@ export class Router {
     constructor(route: PublicRoute, urlHistory: UrlHistory) {
         this.history = urlHistory;
         this.setRootRoute((route as {} as InnerRoute)._route);
-        console.log(this.registeredRoutes.map(r => r.url));
+        // console.log(this.registeredRoutes.map(r => r.url));
     }
 
     addRoute(route: RouteDef) {
@@ -356,6 +356,10 @@ export class Router {
         this.onPopState();
     }
 
+    destroy() {
+        this.history.removeListener(this.onPopState);
+    }
+
     addListener(onChange: ()=>void) {
         this.onChangeCallbacks.push(onChange);
     }
@@ -376,52 +380,30 @@ export class Router {
 }
 
 interface RouterViewProps {
-    history: UrlHistory;
-    indexRoute: PublicRoute;
+    router: Router;
+    isServerSide?: boolean
 }
 
 export class RouterView extends React.Component<RouterViewProps, {}> {
-    router: Router;
 
     update = () => {
         this.forceUpdate();
     };
 
     componentWillMount() {
-        this.router = new Router(this.props.indexRoute, this.props.history);
-        this.router.init();
-        this.router.addListener(this.update);
+        if (!this.props.isServerSide) {
+            this.props.router.addListener(this.update);
+        }
     }
 
     render() {
-        const routes = this.router.routeStack;
+        const routes = this.props.router.routeStack;
         let Component: React.ReactElement<{}> | null = null;
         for (let i = routes.length - 1; i >= 0; i--) {
             const route = routes[i];
-            const enterData = this.router.routeStackEnterData[i];
+            const enterData = this.props.router.routeStackEnterData[i];
             Component = React.createElement(route.component, enterData, Component!)
         }
-        console.log('render', Component, routes);
-        return Component!;
-    }
-}
-
-
-interface ServerRouterViewProps {
-    history: UrlHistory;
-    router: Router;
-}
-export class ServerRouterView extends React.Component<ServerRouterViewProps, {}> {
-    render() {
-        const router = this.props.router;
-        const routes = router.routeStack;
-        let Component: React.ReactElement<{}> | null = null;
-        for (let i = routes.length - 1; i >= 0; i--) {
-            const route = routes[i];
-            const enterData = router.routeStackEnterData[i];
-            Component = React.createElement(route.component, enterData, Component!)
-        }
-        console.log('render', Component, routes);
         return Component!;
     }
 }

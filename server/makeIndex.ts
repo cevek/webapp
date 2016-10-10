@@ -10,7 +10,7 @@ export function makeIndex(params: {title: string, body: string, javascript: stri
     ${params.styles.map(style => `\t<link href="${style}" rel="stylesheet">\n`)}
 </head>
 <body>
-    ${params.body}
+    <div id="wrapper">${params.body}</div>
     ${params.javascript.map(js => `<script src="${js}"></script>`)}
 </body>
 </html>

@@ -4,7 +4,9 @@ import * as styles from "./App.scss";
 import * as bs from "../../styles/bootstrap.scss";
 import {Header} from "./Header/Header";
 import {Footer} from "./Footer/Footer";
+import {headerVM} from './HeaderVM';
 
+headerVM.title;
 export interface AppProps {
 
 }
@@ -12,7 +14,6 @@ export interface AppProps {
 export class App extends React.Component<AppProps, {}> {
 
     render() {
-        console.log(this.props);
         return (
             <div className={classNames(bs.nav, styles.wrapper)}>
                 <div className={styles.main}>
@@ -21,6 +22,7 @@ export class App extends React.Component<AppProps, {}> {
                         {this.props.children}
                     </div>
                 </div>
+                <div className="yow-man yellow"></div>
                 <Footer/>
             </div>
         );
