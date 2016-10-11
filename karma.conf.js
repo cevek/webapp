@@ -1,6 +1,7 @@
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var styleBundleName = 'style.css';
+const webpack = require('webpack');
 
 const htmlPluginConfig = {
     // filename: './src/index.html',
@@ -10,10 +11,13 @@ const htmlPluginConfig = {
 module.exports = function (config) {
     config.set({
         basePath: '',
-        frameworks: ['jasmine'],
-        files: ['src/specs.ts'],
+        frameworks: [
+            'jasmine',
+            'jasmine-expect-jsx'
+        ],
+        files: ['tests.ts'],
         preprocessors: {
-            'src/spec/main.spec.ts': ['webpack', 'sourcemap'],
+            'tests.ts': ['webpack', 'sourcemap'],
         },
         webpack: {
             resolve: {
@@ -21,11 +25,22 @@ module.exports = function (config) {
             },
             module: {
                 loaders: [
-                    {test: /\.tsx?$/, loader: 'ts-loader'},
+                    {
+                        test: /\.tsx?$/,
+                        loader: 'ts-loader'
+                    },
                     {
                         test: /\.scss/,
                         loader: ExtractTextPlugin.extract('style-loader', 'css?sourceMap&modules&&localIdentName=[local]-[hash:base64:2]!sass?sourceMap'),
-                    }
+                    },
+                    {
+                        test: /\.(png|svg|gif|woff2|woff|ttf)$/,
+                        loader: "url-loader?limit=100000"
+                    },
+                    {
+                        test: /\.jpg$/,
+                        loader: "file-loader"
+                    },
                 ]
             },
             stats: {
@@ -37,10 +52,19 @@ module.exports = function (config) {
             plugins: [
                 new ExtractTextPlugin(styleBundleName),
                 new HtmlWebpackPlugin(htmlPluginConfig),
+                new webpack.SourceMapDevToolPlugin({
+                    filename: null, // if no value is provided the sourcemap is inlined
+                    test: /\.(ts|js)($|\?)/i, // process .js and .ts files only
+                    moduleFilenameTemplate: '[resourcePath]',
+                    fallbackModuleFilenameTemplate: 'ywo:///[resourcePath]?[hash]',
+                })
             ],
             devtool: 'inline-source-map',
         },
-        reporters: ['progress'],
+        reporters: [
+            'jasmine-expect-jsx',
+            'progress',
+        ],
         port: 9876,
         colors: true,
         logLevel: config.LOG_INFO,

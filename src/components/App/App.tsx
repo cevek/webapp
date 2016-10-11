@@ -4,15 +4,12 @@ import * as styles from "./App.scss";
 import * as bs from "../../styles/bootstrap.scss";
 import {Header} from "./Header/Header";
 import {Footer} from "./Footer/Footer";
-import {headerVM} from './HeaderVM';
 
-headerVM.title;
 export interface AppProps {
 
 }
 
 export class App extends React.Component<AppProps, {}> {
-
     render() {
         return (
             <div className={classNames(bs.nav, styles.wrapper)}>

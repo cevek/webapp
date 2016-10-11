@@ -340,6 +340,8 @@ export class Router {
 
     failTransition(reason: any) {
         console.log("fail transition", reason);
+        // restore old url
+        this.history.replace(this.url);
         return this.publicFastPromise.reject(reason);
     }
 

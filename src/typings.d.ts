@@ -1,16 +1,12 @@
-declare module '*.scss' {
-    var content: any;
-    export = content;
-}
+declare module '*.scss'
+declare module '*.svg'
 
-declare module '*.svg' {
-    var content: any;
-    export = content;
-}
-
-declare module "react-shallow-testutils" {
-    var a: any;
-    export = a;
+declare namespace jasmine {
+    import ReactElement = React.ReactElement;
+    interface Matchers {
+        toEqualJSX(el: ReactElement<any>): boolean;
+        toIncludeJSX(el: ReactElement<any>): boolean;
+    }
 }
 
 declare function fetch(...args: any[]): any;

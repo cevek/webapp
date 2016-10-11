@@ -46,7 +46,7 @@ module.exports = {
 
     autoCssLoader: {
         syntax: 'scss',
-        excludes: [require('autocss-loader/bootstrap-classnames')]
+        excludes: [require('autocss-loader/bootstrap-classnames').v4]
     },
 
     plugins: [

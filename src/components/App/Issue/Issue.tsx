@@ -3,7 +3,8 @@ import * as classNames from "classnames";
 import * as styles from "./Issue.scss";
 import {IssueFull} from "../../../models/Issue";
 import {formatDate} from "../../../services/Utils";
-import {headerVM} from "../HeaderVM";
+import {HeaderVM} from '../HeaderVM';
+import {inject} from '../../../../lib/services/Injector/Injector';
 
 interface IssueProps {
     issue: IssueFull;
@@ -13,7 +14,7 @@ interface IssueProps {
 export class Issue extends React.Component<IssueProps, {}> {
     static resolve(props: IssueProps) {
         return new IssueFull(props.params.id).fetch().then(issue => {
-            headerVM.title = issue.title;
+            inject(HeaderVM).title = issue.title;
             props.issue = issue;
         });
     }

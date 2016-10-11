@@ -1,16 +1,20 @@
 import * as React from 'react';
-import * as classNames from 'classnames';
-import {Footer} from './Footer'; 
-import * as styles from './Footer.scss';
+import * as ReactTestUtils from 'react-addons-test-utils';
+import {Footer} from './Footer';
+
+const renderer = ReactTestUtils.createRenderer();
 
 describe('Footer', () => {
-    let renderer: any;
     beforeEach(() => {
-                                    
+
     });
-    
     it('case1', () => {
-        const result = renderer(<Footer/>);
-        expect(result).toEqual(<div className={classNames(styles.footer)}>Footer</div>);                        
+        renderer.render(<Footer/>);
+        const result = renderer.getRenderOutput();
+        expect(result).toEqualJSX(
+            <div className="footer">
+                Footer
+            </div>
+        );
     });
 });
