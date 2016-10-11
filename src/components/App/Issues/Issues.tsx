@@ -6,6 +6,7 @@ import {IndexRoute} from "../../../routes";
 import {observer} from "mobx-react";
 import {HeaderVM} from '../HeaderVM';
 import {inject} from '../../../../lib/services/Injector/Injector';
+import {IssuesVM} from './IssuesVM';
 
 interface IssuesProps {
     issues: IssuesStore;
@@ -24,8 +25,10 @@ export class Issues extends React.Component<IssuesProps, {}> {
         return this.props.issues.delete(posNumber);
     }
 
+    issuesVM = inject(IssuesVM);
+
     render() {
-        const activeTabClass = issuesVM.activeTab;
+        const activeTabClass = this.issuesVM.activeTab;
 
         return (
             <div className="issues">
@@ -33,7 +36,7 @@ export class Issues extends React.Component<IssuesProps, {}> {
                     <li className="nav-item">
                         <a
                             className={classNames("nav-link", activeTabClass == "Opened" ? "active" : '')}
-                            onClick={()=>issuesVM.activeTab = 'Opened'}
+                            onClick={()=>this.issuesVM.activeTab = 'Opened'}
                             href="#"
                         >
                             Opened
@@ -42,7 +45,7 @@ export class Issues extends React.Component<IssuesProps, {}> {
                     <li className="nav-item">
                         <a
                             className={classNames("nav-link", activeTabClass == "Closed" ? "active" : '')}
-                            onClick={()=>issuesVM.activeTab = 'Closed'}
+                            onClick={()=>this.issuesVM.activeTab = 'Closed'}
                             href="#"
                         >
                             Closed
@@ -51,7 +54,7 @@ export class Issues extends React.Component<IssuesProps, {}> {
                 </ul>
                 <ul className="issues__list-group">
                     {this.props.issues.items.filter((issue) => {
-                        return issuesVM.activeTab == "Opened" ? issue.closedAt == null : issue.closedAt != null;
+                        return this.issuesVM.activeTab == "Opened" ? issue.closedAt == null : issue.closedAt != null;
                     }).map((issue, pos) =>
                         <li key={issue.number} className="list-group-item list-group-item-action">
                             <ActionButton

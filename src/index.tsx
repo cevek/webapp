@@ -2,7 +2,7 @@
 import * as ReactDOM from "react-dom";
 import * as React from "react";
 import "./index.scss"
-import {RouterView, BrowserHistory} from "../lib/components/Router/Router";
+import {RouterView, BrowserHistory, Router} from "../lib/components/Router/Router";
 import {IndexRoute} from "./routes";
 
 const history = new BrowserHistory();

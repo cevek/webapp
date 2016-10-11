@@ -1,6 +1,8 @@
 import * as React from 'react';
 import * as ReactTestUtils from 'react-addons-test-utils';
 import {Footer} from './Footer';
+import * as github from './github.svg';
+
 
 const renderer = ReactTestUtils.createRenderer();
 
@@ -13,7 +15,9 @@ describe('Footer', () => {
         const result = renderer.getRenderOutput();
         expect(result).toEqualJSX(
             <div className="footer">
-                Footer
+                <div className="container">
+                    <img src={github} alt="github"/>
+                </div>
             </div>
         );
     });

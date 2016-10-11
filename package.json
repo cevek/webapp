@@ -21,7 +21,7 @@
     "@types/react": "^0.14.37",
     "@types/react-addons-test-utils": "^0.14.15",
     "@types/react-dom": "^0.14.17",
-    "autocss-loader": ">0.0.4",
+    "autocss-loader": ">=0.0.4",
     "autoprefixer": "^6.5.0",
     "babel-runtime": "^6.11.6",
     "bootstrap": "^4.0.0-alpha.4",
