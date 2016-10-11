@@ -10,13 +10,35 @@
 
 // Responsive alignment
 
-//@each $breakpoint in map-keys($grid-breakpoints) {
-//  @include media-breakpoint-up($breakpoint) {
-//    .text-#{$breakpoint}-left   { text-align: left !important; }
-//    .text-#{$breakpoint}-right  { text-align: right !important; }
-//    .text-#{$breakpoint}-center { text-align: center !important; }
-//  }
-//}
+@include media-breakpoint-up(xs) {
+  .text-xs-left   { text-align: left !important; }
+  .text-xs-right  { text-align: right !important; }
+  .text-xs-center { text-align: center !important; }
+}
+
+@include media-breakpoint-up(sm) {
+  .text-sm-left   { text-align: left !important; }
+  .text-sm-right  { text-align: right !important; }
+  .text-sm-center { text-align: center !important; }
+}
+
+@include media-breakpoint-up(md) {
+  .text-md-left   { text-align: left !important; }
+  .text-md-right  { text-align: right !important; }
+  .text-md-center { text-align: center !important; }
+}
+
+@include media-breakpoint-up(lg) {
+  .text-lg-left   { text-align: left !important; }
+  .text-lg-right  { text-align: right !important; }
+  .text-lg-center { text-align: center !important; }
+}
+
+@include media-breakpoint-up(xl) {
+  .text-xl-left   { text-align: left !important; }
+  .text-xl-right  { text-align: right !important; }
+  .text-xl-center { text-align: center !important; }
+}
 
 // Transformation
 

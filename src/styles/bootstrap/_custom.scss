@@ -3,7 +3,6 @@
 // Copy variables from `_variables.scss` to this file to override default values
 // without modifying source files.
 
-@import "../../lib/styles/variables";
-
+$brand-primary:             gray !default;
 $header-gray: #f5f5f5;
 $p-sm: 10px;

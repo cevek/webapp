@@ -1,7 +1,6 @@
 // Toggles
 //
 // Used in conjunction with global variables to enable certain theme features.
-@import "../../lib/styles/mixins";
 
 @mixin box-shadow($shadow...) {
   @if $enable-shadows {

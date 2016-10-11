@@ -1,6 +1,4 @@
 import * as React from "react";
-import * as classNames from "classnames";
-import * as styles from "./Issue.scss";
 import {IssueFull} from "../../../models/Issue";
 import {formatDate} from "../../../services/Utils";
 import {HeaderVM} from '../HeaderVM';
@@ -21,20 +19,22 @@ export class Issue extends React.Component<IssueProps, {}> {
 
     render() {
         return (
-            <div className={classNames(styles.issue)}>
-                <h1 className={classNames(styles.title)}>{this.props.issue.title}</h1>
-                <article className={classNames(styles.article)}>{this.props.issue.body}</article>
+            <div className="issue">
+                <div className="issue__jumbotron jumbotron jumbotron-fluid">
+                    <h1 className="display-3 issue__title">{this.props.issue.title}</h1>
+                    <article className="lead issue__article">{this.props.issue.body}</article>
+                </div>
                 {this.props.issue.userComments.items.map(userComment =>
-                    <div className={classNames(styles.commentBody)} key={userComment.id}>
+                    <div className="issue__comment-body" key={userComment.id}>
                         <img
                             src={userComment.user.avatarUrl}
-                            className={classNames(styles.userAvatar)}
+                            className="issue__avatar"
                             alt={userComment.user.login}
                         />
-                        <div>
-                            <div className={classNames(styles.author)}>{userComment.user.login}</div>
-                            <div className={classNames(styles.time)}>{formatDate(userComment.createdAt)}</div>
-                            <div className={classNames(styles.commentText)}>{userComment.body}</div>
+                        <div className="issue__text">
+                            <div className="issue__author">{userComment.user.login}</div>
+                            <div className="issue__time">{formatDate(userComment.createdAt)}</div>
+                            <div className="issue__comment-text">{userComment.body}</div>
                         </div>
                     </div>
                 )}

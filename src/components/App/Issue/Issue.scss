@@ -1,42 +1,53 @@
-@import "../../../styles/index";
-
 .issue {
-    
+  margin: 20px 0;
 }
 
-.title {
+.issue__jumbotron {
+  padding: 40px;
+}
+
+.issue__title {
   border-bottom: 1px solid $header-gray;
 }
 
-.article {
+.issue__article {
   white-space: pre-line;
 }
 
-.comment-body {
+.issue__comment-body {
   display: flex;
   flex-flow: row nowrap;
   align-items: flex-start;
   margin-top: 1em;
   border: 1px dotted darken($header-gray, 50%);
+  padding: 10px;
 }
 
 
-.user-avatar {
-  height: 30px;
-  width: 30px;
-  display: inline;
-  margin: .5em;
+.issue__avatar {
+  height: 50px;
+  width: 50px;
 }
 
-.author {
+.issue__text {
+  margin-left: 10px;
+}
+
+.issue__author {
   font-style: bold;
 }
 
-.time {
-  font-size: .8em;
+.issue__time {
+  //font-size: .8em;
 }
 
-.comment-text {
-  font-size: .7em;
+.issue__comment-text {
+  //font-size: .7em;
   color: teal;
 }
+
+
+
+
+
+

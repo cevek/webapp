@@ -1,6 +1,5 @@
 import * as React from "react";
 import * as classNames from "classnames";
-import * as styles from "./Issues.scss";
 import {IssuesStore} from "../../../models/IssuesStore";
 import {ActionButton} from "../../../../lib/components/ActionButton/ActionButton";
 import {IndexRoute} from "../../../routes";
@@ -26,18 +25,46 @@ export class Issues extends React.Component<IssuesProps, {}> {
     }
 
     render() {
+        const activeTabClass = issuesVM.activeTab;
+
         return (
-            <div className={classNames(styles.issues)}>
-                <ul>
-                    {this.props.issues.items.map((issue, pos) =>
-                        <li key={issue.number}>
+            <div className="issues">
+                <ul className="nav nav-pills">
+                    <li className="nav-item">
+                        <a
+                            className={classNames("nav-link", activeTabClass == "Opened" ? "active" : '')}
+                            onClick={()=>issuesVM.activeTab = 'Opened'}
+                            href="#"
+                        >
+                            Opened
+                        </a>
+                    </li>
+                    <li className="nav-item">
+                        <a
+                            className={classNames("nav-link", activeTabClass == "Closed" ? "active" : '')}
+                            onClick={()=>issuesVM.activeTab = 'Closed'}
+                            href="#"
+                        >
+                            Closed
+                        </a>
+                    </li>
+                </ul>
+                <ul className="issues__list-group">
+                    {this.props.issues.items.filter((issue) => {
+                        return issuesVM.activeTab == "Opened" ? issue.closedAt == null : issue.closedAt != null;
+                    }).map((issue, pos) =>
+                        <li key={issue.number} className="list-group-item list-group-item-action">
                             <ActionButton
                                 onClick={()=>IndexRoute.issue.goto({id: issue.number})}
+                                className="btn-link"
                             >
                                 {issue.title}
                             </ActionButton>
-                            <ActionButton onClick={() => this.onDelete(pos)}>
-                                X
+                            <ActionButton
+                                onClick={() => this.onDelete(pos)}
+                                className="close"
+                            >
+                                ×
                             </ActionButton>
                         </li>
                     )}

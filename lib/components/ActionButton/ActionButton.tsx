@@ -5,6 +5,7 @@ interface ActionButtonProps {
     onClick: () => FastPromise<any> | void;
     className?: any;
 }
+
 export class ActionButton extends React.Component<ActionButtonProps, {}> {
     disabled = false;
     mounted: boolean;
@@ -38,6 +39,14 @@ export class ActionButton extends React.Component<ActionButtonProps, {}> {
     }
 
     render() {
-        return <button disabled={this.disabled} onClick={this.onClick}>{this.props.children}</button>
+        return (
+            <button
+                disabled={this.disabled}
+                onClick={this.onClick}
+                className={this.props.className}
+            >
+                {this.props.children}
+            </button>
+        );
     }
 }

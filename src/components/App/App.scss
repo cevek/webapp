@@ -1,55 +1,18 @@
-@import "../../styles/index";
-
-@font-face {
-  font-family: 'open_sanscondensed_light';
-  src: url('./fonts/opensans-condlight-webfont.woff2') format('woff2'),
-  url('./fonts/opensans-condlight-webfont.woff') format('woff');
-  font-weight: normal;
-  font-style: normal;
-}
-$foo: margin;
-
-
-.wrapper {
-  app: app;
-  background-color: $test-color;
+.app__wrapper {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
 }
 
-@mixin test($color) {
-  color: $color;
-}
-
-@mixin test1($prop, $color) {
-  a.#{$prop}, button.#{$prop} {
-    //#{$prop}: $color;
-    color: $color;
-  }
-}
-
-
-//.wrapper {
-//  font-family: open_sanscondensed_light, sans-serif;
-//  font-size: 30px;
-//  display: flex;
-//  flex-flow: column nowrap;
-//  min-height: 100vh;
-//  @include test1(margin, 10);
-//}
-
-.main-#{$foo} {
+.app__main {
   flex: 1;
-  color: #{$foo};
-  //#{$foo}: 10;
-  @include test1(test, white);
 }
 
 
-.app-header {
-  /*style*/
-}
 
-.app-toolbar {
-  /*style*/
-}
+
+
+
+
 
 
