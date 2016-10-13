@@ -1,7 +1,5 @@
 import * as React from "react";
-import * as classNames from "classnames";
 import {Issue} from "./Issue";
-import * as styles from "./Issue.scss";
 
 describe('Issue', () => {
     let renderer: any;
@@ -11,6 +9,6 @@ describe('Issue', () => {
     
     it('case1', () => {
         const result = renderer(<Issue/>);
-        expect(result).toEqual(<div className={classNames(styles.issue)}>Issue</div>);                        
+        expect(result).toEqual(<div className="issue">Issue</div>);
     });
 });
