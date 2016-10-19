@@ -1,7 +1,11 @@
 import {Packer} from './packer';
-import {/*scss, postcss, combineJS, combineCSS, hash, jade, dest, */ts} from './plugs';
+import {ts} from './ts';
+import {combineJS} from './combineJS';
+import {dest} from './dest';
 new Packer({context: __dirname + '/../src/'}, promise => promise
-        .then(ts(null, ['-p', __dirname + '/../tsconfig.json']))
+        .then(ts())
+        .then(combineJS('dist/vendor.js'))
+        .then(dest())
     /* .then(scss())
      .then(postcss())
      .then(combineJS('dist/vendor.js', ['react', 'mobx']))
@@ -10,7 +14,7 @@ new Packer({context: __dirname + '/../src/'}, promise => promise
      .then(jade())
      .then(dest())*/
 ).process().then(() => {
-    
+    console.log("Done");
 }, (err) => {
-    console.error(err)
+    console.error(err.stack)
 });

@@ -1,49 +1,4 @@
-import {plugin, Glob, FileTree, FileItem} from './packer';
-import * as TS from 'typescript';
-import tsPatcher from 'ts-patcher';
 
-
-export function ts(filesGlob: Glob = '', options?: string[]) {
-    return plugin(plug => {
-        return new Promise((resolve, reject) => {
-            plug.findFiles(filesGlob).then((files) => {
-                tsPatcher({
-                    args: options,
-                    endCompilatation(program: TS.Program, host: TS.CompilerHost){
-                        console.log('output');
-                        // todo:
-                        resolve();
-                    },
-                    onEmitFile(file: string, data: string){
-                        console.log(file);
-                    }
-                });
-                /*plug.tree.pushFiles(files);
-                 
-                 tsPatcher({
-                 
-                 });
-                 
-                 const filesMap = {};
-                 const host = ts.createHost({
-                 files: files.map(f => f.fullName),
-                 writeFile: (file, data) => filesMap[file] = data
-                 });
-                 const result = host.emit();
-                 const sourceFiles = new FileTree(result.sourceFiles.map(file => new FileItem(file.fileName)));
-                 const emittedFiles = new FileTree(result.emittedFiles.map(file => new FileItem(file, filesMap[file])));
-                 
-                 plug.tree.pushFiles(sourceFiles);
-                 
-                 emittedFiles.forEach(file =>
-                 plug.tree.emitFile(file));
-                 */
-                // plug.tree.scanJSImports(emittedFiles);
-                resolve();
-            });
-        });
-    });
-}
 /*
  const nodeSass = require('node-sass');
  
