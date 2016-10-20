@@ -14,7 +14,7 @@ export function ts(options?: TS.CompilerOptions) {
             
             const compilerHost = TS.createCompilerHost(compilerOptions);
             compilerHost.writeFile = function (file, data) {
-                plug.addFile(file, data, true);
+                plug.addFile(file, data, false);
             };
             /*
              //todo:

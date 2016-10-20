@@ -4,10 +4,12 @@ export function combine(outfile: string, plug: Plug, files: FileItem[], header: 
     let bulk = '';
     let sourcemap = new SourceMap();
     files.forEach((file) => {
-        bulk += file.content;
-        if (file.sourcemap) {
-            sourcemap.mappings += file.sourcemap.mappings;
-            sourcemap.sources.push(...file.sourcemap.sources);
+        bulk += header + file.content + footer;
+        if (file.sourcemapFile) {
+            const sm = JSON.parse(file.sourcemapFile.content.toString());
+            sourcemap.mappings += sm.mappings;
+            sourcemap.sources.push(...sm.sources);
+            //todo: check sm
         } else {
             const content = file.content;
             let i = content.length;

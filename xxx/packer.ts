@@ -56,50 +56,68 @@ export class Plug {
         });
     }
     
-    private list: FileItem[] = [];
-    private listHash: {[index: string]: number} = {};
+    readonly list: FileItem[] = [];
+    //todo: listHash
     
     addFile(fullname: string, content: string | Buffer, fromFileSystem: boolean): FileItem {
+        fullname = this.normalizeName(fullname);
         let file = this.getFileByName(fullname);
         if (file) {
             return file;
         }
         file = new FileItem(fullname, typeof content == 'string' ? new Buffer(content) : content, this.options.context, fromFileSystem);
         this.list.push(file);
-        this.listHash[file.fullName] = this.list.length - 1;
-        // console.log(`Added ${file.fullName}`);
+        // this.listHash[file.fullName] = this.list.length - 1;
+        
+        //todo: get name from original file
+        const sourceMapFileName = file.fullName + '.map';
+        const sourceMapFile = this.getFileByName(sourceMapFileName);
+        if (sourceMapFile) {
+            file.sourcemapFile = sourceMapFile;
+            sourceMapFile.isSourceMap = true;
+        }
+        
+        // if file source map stick to origin file
+        if (file.ext == 'map') {
+            const originFileName = file.dirname + file.basenameWithoutExt;
+            const originFile = this.getFileByName(originFileName);
+            if (originFile) {
+                originFile.sourcemapFile = file;
+                file.isSourceMap = true;
+            }
+        }
         return file;
     }
     
-    getFileByName(fullname: string): FileItem | null {
-        const index = this.listHash[fullname];
-        if (index != null) {
-            return this.list[index];
-        }
-        return null;
+    getFileByName(fullname: string): FileItem | undefined {
+        return this.list.find(file => file.fullName == fullname);
     }
     
     normalizeName(filename: string) {
-        filename = path.resolve(filename);
-        return path.isAbsolute(filename) ? filename : this.options.context + filename;
+        filename = path.normalize(filename);
+        return path.isAbsolute(filename) ? filename : this.options.context + '/' + filename;
     }
     
     removeFile(file: FileItem) {
-        const index = this.listHash[file.fullName];
+        const index = this.list.findIndex(f => f == file);
         if (index == null) {
             throw new Error(`File ${file.fullName} not found`);
         }
         this.list.splice(index, 1);
-        this.listHash[file.fullName] = null;
         return this;
     }
-    
     
     readFile(filename: string) {
         return new Promise<Buffer>((resolve, reject) => {
             fs.readFile(filename, (err, data) => {
                 err ? reject(err) : resolve(data)
             })
+        });
+    }
+    
+    fileExists(filename: string) {
+        return new Promise<boolean>(resolve => {
+            fs.access(filename, (fs as any).F_OK, err => resolve(!err));
         });
     }
     
@@ -121,6 +139,7 @@ export class Plug {
     }
     
     addFileFromFS(filename: string): Promise<FileItem> {
+        filename = this.normalizeName(filename);
         let file = this.getFileByName(filename);
         if (file) {
             return Promise.resolve(file);
@@ -134,9 +153,8 @@ export class Plug {
     }
     
     
-    
     forEach<T>(fn: (item: FileItem, i: number)=>T) {
-        return null;
+        return this.list.forEach(fn);
     }
     
     map<T>(fn: (item: FileItem, i: number)=>T): T[] {
@@ -146,15 +164,7 @@ export class Plug {
     log(message: any, ...args: any[]) {
         console.log(message, ...args);
     }
-    
-    getChangedFiles() {
-        return this.list.filter(f => f.updated);
-    }
-    
-    getChangedFSFiles() {
-        return this.list.filter(f => f.updatedFS);
-    }
-    
+
     scanJSImports(files: FileItem[]) {
         
     }
@@ -164,12 +174,14 @@ export class Plug {
             if (!filesGlob) {
                 return resolve([]);
             }
-            //todo: use glob
-            this.watcher.add(filesGlob, (list) => {
-                const w = this.watcher.watched();
-                let files = [];
-                Object.keys(w).forEach(dir => files.push(...w[dir]));
-                files = files.filter(f => !fs.statSync(f).isDirectory());
+            
+            this.watcher.add(filesGlob);
+            glob(filesGlob, {
+                cwd: this.options.context
+            }, (err, files) => {
+                if (err) {
+                    return reject(err);
+                }
                 Promise.all(files.map(f => this.addFileFromFS(f))).then(resolve);
             });
         });
@@ -190,24 +202,42 @@ export class SourceMap {
 
 
 export class FileItem {
-    constructor(fullName: string, content: Buffer, public context: string, fromFileSystem: boolean) {
+    constructor(fullName: string, content: Buffer, public context: string, fromFileSystem: boolean, isSourceMap?: boolean) {
+        this.fromFileSystem = fromFileSystem;
         this.setName(fullName);
         this.setContent(content);
-        if (fromFileSystem) {
-            this.updated = false;
-            this.updatedFS = false;
-        }
+        this.updated = true;
     }
     
+    fromFileSystem: boolean;
     fullName: string;
     relativeName: string;
-    updated = false;
-    updatedFS = false;
+    updated: boolean;
     hash: string;
-    fsHash: string;
     content: Buffer;
     sourcemap: SourceMap;
     sourcemapFile: FileItem;
+    isSourceMap: boolean;
+    
+    get basename() {
+        return path.basename(this.fullName);
+    }
+    
+    get ext() {
+        return path.extname(this.fullName).substr(1);
+    }
+    
+    get basenameWithoutExt() {
+        return this.basename.replace(/\.[^.]+$/, '');
+    }
+    
+    get dirname() {
+        return path.dirname(this.fullName) + '/';
+    }
+    
+    get relativeDirname() {
+        return path.dirname(this.relativeName);
+    }
     
     // lines = 0;
     // size = 0;
@@ -228,10 +258,6 @@ export class FileItem {
             this.hash = hash;
             this.updated = true;
         }
-        if (hash !== this.fsHash) {
-            this.fsHash = hash;
-            this.updatedFS = true;
-        }
     }
     
     writeFileToFS(): Promise<void> {
@@ -241,13 +267,12 @@ export class FileItem {
                     return reject(err);
                 }
                 //todo
-                console.log('Emit file: ' + this.relativeName);
+                console.log('Emit file: ' + this.fullName);
                 fs.writeFile(this.fullName, this.content, (err, data) => {
                     if (err) {
                         return reject(err);
                     }
-                    this.updatedFS = false;
-                    this.fsHash = this.hash;
+                    this.updated = false;
                     resolve(data);
                 });
             });
