@@ -2,8 +2,9 @@ import {plugin, Glob, FileItem} from './packer';
 import * as TS from 'typescript';
 import * as path from 'path';
 
-export function ts(options?: TS.CompilerOptions) {
+export function ts(options: TS.CompilerOptions = {}) {
     return plugin(plug => new Promise((resolve, reject) => {
+        options.outDir = plug.options.dest;
         const configFileName = (options && options.project) || TS.findConfigFile(plug.options.context, TS.sys.fileExists);
         plug.log('Using ' + configFileName);
         plug.addFileFromFS(configFileName).then(file => {
@@ -14,7 +15,7 @@ export function ts(options?: TS.CompilerOptions) {
             
             const compilerHost = TS.createCompilerHost(compilerOptions);
             compilerHost.writeFile = function (file, data) {
-                plug.addFile(file, data, false);
+                plug.addDistFile(file, data);
             };
             /*
              //todo:
@@ -39,8 +40,9 @@ export function ts(options?: TS.CompilerOptions) {
             // Otherwise, emit and report any errors we ran into.
             const emitOutput = program.emit();
             diagnostics = diagnostics.concat(emitOutput.diagnostics);
-            plug.log(diagnostics);
-            
+            if (diagnostics.length) {
+                plug.log(diagnostics);
+            }
             resolve();
         });
     }));

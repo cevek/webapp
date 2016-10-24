@@ -6,10 +6,12 @@ const chokidar = require('chokidar');
 const glob = require("glob");
 const mkdirp = require('mkdirp');
 import crypto = require('crypto');
+import {JSScanner} from './jsScanner';
 const md5sum = crypto.createHash('md5');
 
 interface PackerOptions {
     context: string;
+    dest: string;
 }
 
 export class Packer {
@@ -41,26 +43,41 @@ export function plugin(fn: (plug: Plug)=>Promise<void>) {
 export class Plug {
     options: PackerOptions;
     watcher: any;
+    jsEntries: FileItem[] = [];
     
     constructor(options: PackerOptions) {
         const defaultOptions = {
-            context: process.cwd()
+            context: process.cwd(),
+            dest: 'dist'
         };
         if (options.context) {
             defaultOptions.context = path.resolve(options.context);
         }
+        if (options.dest) {
+            defaultOptions.dest = options.dest;
+        }
         this.options = defaultOptions;
         
+        if (this.options.dest) {
+            this.options.dest = this.normalizeName(this.options.dest);
+        }
+        
+/*
         this.watcher = gaze(null, {
             cwd: this.options.context
         });
+*/
     }
     
     readonly list: FileItem[] = [];
     //todo: listHash
     
+    addDistFile(fullname: string, content: string | Buffer) {
+        return this.addFile(fullname, content, false);
+    }
+    
     addFile(fullname: string, content: string | Buffer, fromFileSystem: boolean): FileItem {
-        fullname = this.normalizeName(fullname);
+        fullname = fromFileSystem ? this.normalizeName(fullname) : this.normalizeDestName(fullname);
         let file = this.getFileByName(fullname);
         if (file) {
             return file;
@@ -95,7 +112,12 @@ export class Plug {
     
     normalizeName(filename: string) {
         filename = path.normalize(filename);
-        return path.isAbsolute(filename) ? filename : this.options.context + '/' + filename;
+        return path.isAbsolute(filename) ? filename : path.normalize(this.options.context + '/' + filename);
+    }
+    
+    normalizeDestName(filename: string) {
+        filename = path.normalize(filename);
+        return path.isAbsolute(filename) ? filename : path.normalize(this.options.dest + '/' + filename);
     }
     
     removeFile(file: FileItem) {
@@ -130,7 +152,7 @@ export class Plug {
         if (file) {
             return file;
         } else {
-            this.watcher.add(filename);
+            // this.watcher.add(filename);
             const data = content || this.readFileSync(filename);
             file = this.addFile(filename, data, true);
             // console.log("Watched", file.relativeName);
@@ -144,7 +166,7 @@ export class Plug {
         if (file) {
             return Promise.resolve(file);
         } else {
-            this.watcher.add(filename);
+            // this.watcher.add(filename);
             return this.readFile(filename).then(data => this.addFile(filename, data, true)).then(file => {
                 // console.log("Watched", file.relativeName);
                 return file;
@@ -164,7 +186,7 @@ export class Plug {
     log(message: any, ...args: any[]) {
         console.log(message, ...args);
     }
-
+    
     scanJSImports(files: FileItem[]) {
         
     }
@@ -175,10 +197,10 @@ export class Plug {
                 return resolve([]);
             }
             
-            this.watcher.add(filesGlob);
+            // this.watcher.add(filesGlob);
             glob(filesGlob, {
                 cwd: this.options.context
-            }, (err, files) => {
+            }, (err: any, files: string[]) => {
                 if (err) {
                     return reject(err);
                 }
@@ -200,7 +222,6 @@ export class SourceMap {
     }
 }
 
-
 export class FileItem {
     constructor(fullName: string, content: Buffer, public context: string, fromFileSystem: boolean, isSourceMap?: boolean) {
         this.fromFileSystem = fromFileSystem;
@@ -211,6 +232,7 @@ export class FileItem {
     
     fromFileSystem: boolean;
     fullName: string;
+    numberName: number;
     relativeName: string;
     updated: boolean;
     hash: string;
@@ -262,7 +284,7 @@ export class FileItem {
     
     writeFileToFS(): Promise<void> {
         return new Promise((resolve, reject) => {
-            mkdirp(path.dirname(this.fullName), (err) => {
+            mkdirp(path.dirname(this.fullName), (err: any) => {
                 if (err) {
                     return reject(err);
                 }
@@ -278,6 +300,7 @@ export class FileItem {
             });
         });
     }
+    
 }
 
 

@@ -3,6 +3,9 @@
     "module": "commonjs",
     "target": "es6",
     "noEmit": true,
+    "noImplicitThis": true,
+    "noImplicitAny": true,
+    "suppressImplicitAnyIndexErrors": true,
     "sourceMap": true
   },
   "files": [

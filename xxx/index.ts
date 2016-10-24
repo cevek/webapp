@@ -4,11 +4,19 @@ import {combineJS} from './combineJS';
 import {dest} from './dest';
 import {combineCSS} from './combineCSS';
 import {sass} from './sass';
-new Packer({context: __dirname + '/../src/'}, promise => promise
+import {jsEntry} from './jsEntry';
+import {hmr} from './hmr';
+import {scanner} from './scanner';
+import {copy} from './copy';
+new Packer({dest: 'dist', context: __dirname + '/../src/'}, promise => promise
         .then(ts())
-        .then(sass('index.scss'))
-        .then(combineJS('dist/bundle.js'))
-        .then(combineCSS('dist/style.css'))
+        .then(jsEntry('src/index.js'))
+        .then(hmr())
+        .then(scanner())
+        .then(copy('index.html'))
+        // .then(sass('index.scss'))
+        .then(combineJS('bundle.js'))
+        // .then(combineCSS('style.css'))
         .then(dest())
     /*
      .then(postcss())
@@ -25,10 +33,10 @@ new Packer({context: __dirname + '/../src/'}, promise => promise
 
 
 const unhandledRejections = new Map();
-process.on('unhandledRejection', (reason, p) => {
+process.on('unhandledRejection', (reason: any, p: any) => {
     console.error(reason.stack);
     unhandledRejections.set(p, reason);
 });
-process.on('rejectionHandled', (p) => {
+process.on('rejectionHandled', (p: any) => {
     unhandledRejections.delete(p);
 });
