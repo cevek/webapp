@@ -1,13 +1,19 @@
 import * as path from 'path';
 import * as fs from 'fs';
+import {promisify} from './promisify';
 
 const gaze = require('gaze');
 const chokidar = require('chokidar');
-const glob = require("glob");
-const mkdirp = require('mkdirp');
 import crypto = require('crypto');
-import {JSScanner} from './jsScanner';
-const md5sum = crypto.createHash('md5');
+
+const writeFile: (filename: string, content: string | Buffer) => Promise<Buffer> = promisify(fs.writeFile, fs);
+const readFile: (filename: string) => Promise<Buffer> = promisify(fs.readFile, fs);
+const glob: (glob: Glob, options: GlobOptions) => Promise<string[]> = promisify(require("glob"));
+const mkdirp: (dirname: string) => Promise<string[]> = promisify(require('mkdirp'));
+
+interface GlobOptions {
+    cwd?: string;
+}
 
 interface PackerOptions {
     context: string;
@@ -21,11 +27,14 @@ export class Packer {
         
     }
     
-    process() {
-        return this.executor(Promise.resolve(this.plug))
+    async process() {
+        const startedAt = process.hrtime();
+        await this.executor(Promise.resolve(this.plug));
+        const diff = process.hrtime(startedAt);
+        console.log(`Process time: ${(diff[0] * 1000 + diff[1] / 1e6 | 0)}ms`);
     }
     
-    watch() {
+    async watch() {
         
     }
 }
@@ -40,10 +49,21 @@ export function plugin(fn: (plug: Plug)=>Promise<void>) {
     }
 }
 
+
 export class Plug {
     options: PackerOptions;
     watcher: any;
     jsEntries: FileItem[] = [];
+    
+    private cacheData: any = Object.create(null);
+    
+    getCache(name: string): any {
+        let cacheItem = this.cacheData[name];
+        if (!cacheItem) {
+            cacheItem = this.cacheData[name] = Object.create(null);
+        }
+        return cacheItem;
+    }
     
     constructor(options: PackerOptions) {
         const defaultOptions = {
@@ -62,11 +82,11 @@ export class Plug {
             this.options.dest = this.normalizeName(this.options.dest);
         }
         
-/*
-        this.watcher = gaze(null, {
-            cwd: this.options.context
-        });
-*/
+        /*
+         this.watcher = gaze(null, {
+         cwd: this.options.context
+         });
+         */
     }
     
     readonly list: FileItem[] = [];
@@ -107,7 +127,11 @@ export class Plug {
     }
     
     getFileByName(fullname: string): FileItem | undefined {
-        return this.list.find(file => file.fullName == fullname);
+        const file = this.list.find(file => file.fullName == fullname);
+        if (!file) {
+            // throw new Error(`File ${fullname} not found`);
+        }
+        return file;
     }
     
     normalizeName(filename: string) {
@@ -129,7 +153,8 @@ export class Plug {
         return this;
     }
     
-    readFile(filename: string) {
+    async readFile(filename: string) {
+        
         return new Promise<Buffer>((resolve, reject) => {
             fs.readFile(filename, (err, data) => {
                 err ? reject(err) : resolve(data)
@@ -160,53 +185,54 @@ export class Plug {
         }
     }
     
-    addFileFromFS(filename: string): Promise<FileItem> {
+    async addFileFromFS(filename: string): Promise<FileItem> {
         filename = this.normalizeName(filename);
         let file = this.getFileByName(filename);
         if (file) {
-            return Promise.resolve(file);
+            return file;
         } else {
             // this.watcher.add(filename);
-            return this.readFile(filename).then(data => this.addFile(filename, data, true)).then(file => {
-                // console.log("Watched", file.relativeName);
-                return file;
-            });
+            const data = await readFile(filename);
+            return this.addFile(filename, data, true);
         }
-    }
-    
-    
-    forEach<T>(fn: (item: FileItem, i: number)=>T) {
-        return this.list.forEach(fn);
-    }
-    
-    map<T>(fn: (item: FileItem, i: number)=>T): T[] {
-        return null;
     }
     
     log(message: any, ...args: any[]) {
         console.log(message, ...args);
     }
     
-    scanJSImports(files: FileItem[]) {
-        
-    }
-    
-    findFiles(filesGlob: Glob): Promise<FileItem[]> {
-        return new Promise((resolve, reject) => {
-            if (!filesGlob) {
-                return resolve([]);
-            }
-            
-            // this.watcher.add(filesGlob);
-            glob(filesGlob, {
-                cwd: this.options.context
-            }, (err: any, files: string[]) => {
-                if (err) {
-                    return reject(err);
-                }
-                Promise.all(files.map(f => this.addFileFromFS(f))).then(resolve);
-            });
+    async findFiles(filesGlob: Glob): Promise<FileItem[]> {
+        if (!filesGlob) {
+            return [];
+        }
+        const filenames = await glob(filesGlob, {
+            cwd: this.options.context
         });
+        const files: FileItem[] = [];
+        for (let i = 0; i < filenames.length; i++) {
+            const filename = filenames[i];
+            const file = await this.addFileFromFS(filename);
+            files.push(file);
+        }
+        return files;
+        
+        /*
+         return new Promise((resolve, reject) => {
+         if (!filesGlob) {
+         return resolve([]);
+         }
+         
+         // this.watcher.add(filesGlob);
+         glob(filesGlob, {
+         cwd: this.options.context
+         }, (err: any, files: string[]) => {
+         if (err) {
+         return reject(err);
+         }
+         Promise.all(files.map(f => this.addFileFromFS(f))).then(resolve);
+         });
+         });
+         */
     }
 }
 
@@ -282,23 +308,12 @@ export class FileItem {
         }
     }
     
-    writeFileToFS(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            mkdirp(path.dirname(this.fullName), (err: any) => {
-                if (err) {
-                    return reject(err);
-                }
-                //todo
-                console.log('Emit file: ' + this.fullName);
-                fs.writeFile(this.fullName, this.content, (err, data) => {
-                    if (err) {
-                        return reject(err);
-                    }
-                    this.updated = false;
-                    resolve(data);
-                });
-            });
-        });
+    async writeFileToFS(): Promise<void> {
+        await mkdirp(path.dirname(this.fullName));
+        //todo
+        console.log('Emit file: ' + this.fullName);
+        await writeFile(this.fullName, this.content);
+        this.updated = true;
     }
     
 }

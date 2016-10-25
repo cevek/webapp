@@ -8,12 +8,17 @@ import {jsEntry} from './jsEntry';
 import {hmr} from './hmr';
 import {scanner} from './scanner';
 import {copy} from './copy';
+import {conditional} from './conditional';
+
+
+// const prodOnly = conditional(() => process.env.NODE_ENV == 'production');
+const prodOnly = conditional(() => true);
 new Packer({dest: 'dist', context: __dirname + '/../src/'}, promise => promise
         .then(ts())
         .then(jsEntry('src/index.js'))
         .then(hmr())
         .then(scanner())
-        .then(copy('index.html'))
+        .then(prodOnly(copy('index.html')))
         // .then(sass('index.scss'))
         .then(combineJS('bundle.js'))
         // .then(combineCSS('style.css'))

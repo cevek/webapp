@@ -1,7 +1,7 @@
 import {plugin} from './packer';
 
 export function dest() {
-    return plugin(plug => new Promise((resolve, reject) => {
+    return plugin(async plug => {
         const files = plug.list.filter(f => !f.fromFileSystem && f.updated && !f.isSourceMap);
         const newFiles = files.slice();
         for (let i = 0; i < files.length; i++) {
@@ -10,7 +10,9 @@ export function dest() {
                 newFiles.push(file.sourcemapFile);
             }
         }
-        Promise.all(newFiles.map(file => file.writeFileToFS()))
-            .then(resolve, reject);
-    }));
+        for (let i = 0; i < newFiles.length; i++) {
+            const file = newFiles[i];
+            file.writeFileToFS();
+        }
+    });
 }

@@ -11,7 +11,7 @@ function lineCount(content: string) {
     }
     return sm;
 }
-export function combine(superHeader: string, superFooter: string, outfile: string, plug: Plug, files: FileItem[], headerFn: (file: FileItem) => string, footerFn: (file: FileItem)=>string, resolve: ()=>void) {
+export async function combine(superHeader: string, superFooter: string, outfile: string, plug: Plug, files: FileItem[], headerFn: (file: FileItem) => string, footerFn: (file: FileItem)=>string) {
     let bulk = superHeader;
     
     let sourcemap = new SourceMap();
@@ -56,7 +56,6 @@ export function combine(superHeader: string, superFooter: string, outfile: strin
     outfile = plug.normalizeDestName(outfile);
     plug.addFile(outfile + '.map', sourcemap.toString(), false);
     plug.addFile(outfile, bulk, false);
-    resolve();
 }
 
  

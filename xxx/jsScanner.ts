@@ -1,34 +1,9 @@
+import * as fs from 'fs';
 import {Plug, FileItem} from './packer';
 import {parseJS} from './jsParser';
-const _resolve = require('resolve');
+import {promisify} from './promisify';
 
-import * as fs from 'fs';
-import * as path from 'path';
-
-
-function isModule(module: string) {
-    return !/^(?:\.\.?(?:\/|$)|\/|([A-Za-z]:)?[\\\/])/.test(module);
-}
-// const cachedModules = {};
-function resolve(module: string, options: ResolveOptions) {
-    // const isMod = isModule(module);
-    // if (!isMod) {
-    //     module = path.resolve(options.basedir, module);
-    // }
-    // const fromCache = cachedModules[module];
-    // if (fromCache) {
-    //     return Promise.resolve(fromCache);
-    // }
-    return new Promise<string>((resolve, reject) => {
-        _resolve(module, options, (err: any, data: string) => {
-            if (err) {
-                return reject(err);
-            }
-            // cachedModules[module] = data;
-            resolve(data);
-        });
-    });
-}
+const resolve: (module: string, options: ResolveOptions) => Promise<string> = promisify(require('resolve'));
 
 const pad = Array(500).join(' ');
 
@@ -41,11 +16,9 @@ interface ResolveOptions {
 }
 
 export class JSScanner {
-    constructor(public plug: Plug) {
+    constructor(private plug: Plug) {
         
     }
-    
-    private resolvedCache: string[];
     
     private isRequire(code: string, start: number, size: number, startSymbolCode: number) {
         return size === 7 && startSymbolCode === 114/*r*/ && code.substr(start, size) === 'require';
@@ -67,16 +40,6 @@ export class JSScanner {
     };
     
     private isFile = (filename: string, callback: (err: any, result: boolean) => void) => {
-        /*
-         console.log('isFile', filename);
-         fs.stat(filename, function (err, stat) {
-         if (err && err.code === 'ENOENT') callback(null, false);
-         else if (err) callback(err, null);
-         else callback(null, stat.isFile())
-         });
-         return;
-         */
-        // console.log('isFile', filename);
         filename = this.plug.normalizeName(filename);
         const file = this.plug.getFileByName(filename);
         if (!file) {
@@ -100,25 +63,10 @@ export class JSScanner {
         }
     };
     
-    private resolveOptions = {
-        basedir: '',
-        package: 'package.json',
-        readFile: this.readFile,
-        isFile: this.isFile,
-        moduleDirectory: 'node_modules'
-    };
+    private scanned: any = {};
+    private number = 0;
     
-    scanned: any = {};
-    
-    number = 0;
-    
-    scan(file: FileItem): Promise<void> {
-        if (this.scanned[file.fullName]) {
-            return Promise.resolve(null);
-        }
-        file.numberName = this.number++;
-        // console.time('scan');
-        let code = file.content.toString();
+    private findImports(code: string) {
         const r = parseJS(code, this.isRequire);
         const len = r.length;
         let start = 0;
@@ -139,56 +87,62 @@ export class JSScanner {
                 }
             }
         }
+        return imports;
+    }
+    
+    async scan(file: FileItem): Promise<void> {
+        if (this.scanned[file.fullName]) {
+            return null;
+        }
+        file.numberName = this.number++;
+        let code = file.content.toString();
+        const imports = this.findImports(code);
         
-        // console.timeEnd('scan');
-        // console.log(file.fullName);
-        this.resolveOptions.basedir = file.dirname;
+        file.imports = [];
+        for (let i = 0; i < imports.length; i++) {
+            const imprt = imports[i];
+            const moduleResolvedUrl = await resolve(imprt.module, {
+                basedir: file.dirname,
+                readFile: this.readFile,
+                isFile: this.isFile
+            });
+            imprt.file = this.plug.getFileByName(moduleResolvedUrl);
+            file.imports.push(imprt.file);
+            this.scanned[file.fullName] = true;
+            await this.scan(imprt.file);
+            
+            const len = imprt.endPos - imprt.startPos;
+            // todo: check min len
+            code = code.substr(0, imprt.startPos) + (pad + imprt.file.numberName).substr(-len) + code.substr(imprt.endPos);
+        }
+        file.setContent(code);
         
-        /*
-         const resolvedModules = modules.map(module => resolve(module, {
+        
+        /*return Promise
+         .all(
+         imports.map(imprt =>
+         resolve(imprt.module, {
          basedir: file.dirname,
          readFile: this.readFile,
          isFile: this.isFile
-         }));
-         console.log('modules fullnames', resolvedModules);
-         const importFiles = resolvedModules.map(filename => this.plug.getFileByName(filename));
-         file.imports = importFiles;
-         return Promise.all(importFiles.map(file => this.scan(file)));
-         */
-        
-        return Promise
-            .all(
-                imports.map(imprt =>
-                    resolve(imprt.module, {
-                        basedir: file.dirname,
-                        readFile: this.readFile,
-                        isFile: this.isFile
-                    }).then(resolved => {
-                        imprt.file = this.plug.getFileByName(resolved);
-                        return imprt;
-                    }))
-            )
-            .then(() => {
-                
-                
-                // console.log('modules fullnames', resolvedModules);
-                file.imports = imports.map(imprt => imprt.file);
-                this.scanned[file.fullName] = true;
-                const promises = imports.map(imprt => () => this.scan(imprt.file));
-                return promises.reduce((p, fn) => p.then(fn), Promise.resolve()).then(() => {
-    
-                    
-                    imports.forEach(imprt => {
-                        const len = imprt.endPos - imprt.startPos;
-                        // todo: check min len
-                        let oldLen = code.length;
-                        code = code.substr(0, imprt.startPos) + (pad + imprt.file.numberName).substr(-len) + code.substr(imprt.endPos);
-                        if (oldLen !== code.length) {
-                            throw new Error('bobom');
-                        }
-                    });
-                    file.setContent(code);
-                });
-            });
+         }).then(resolved => {
+         imprt.file = this.plug.getFileByName(resolved);
+         return imprt;
+         }))
+         )
+         .then(() => {
+         file.imports = imports.map(imprt => imprt.file);
+         this.scanned[file.fullName] = true;
+         const promises = imports.map(imprt => () => this.scan(imprt.file));
+         return promises.reduce((p, fn) => p.then(fn), Promise.resolve()).then(() => {
+         
+         imports.forEach(imprt => {
+         const len = imprt.endPos - imprt.startPos;
+         // todo: check min len
+         code = code.substr(0, imprt.startPos) + (pad + imprt.file.numberName).substr(-len) + code.substr(imprt.endPos);
+         });
+         file.setContent(code);
+         });
+         });*/
     }
 }

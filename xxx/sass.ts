@@ -1,6 +1,8 @@
-import {plugin, Glob, FileItem, SourceMap} from './packer';
-const Sass = require('node-sass');
+import {plugin, Glob} from './packer';
 import path = require('path');
+import {promisify} from './promisify';
+
+const sassRender: (options: SassOptions) => Promise<SassResult> = promisify(require('node-sass').render);
 interface SassOptions {
     file?: string;
     data?: string;
@@ -21,36 +23,29 @@ interface SassResult {
     }
 }
 
-function render(file: FileItem, cssName: string, options: SassOptions) {
-    return new Promise<SassResult>((resolve, reject) => {
-        //todo: check that render not read fs
-        options.file = file.fullName;
-        options.outFile = cssName + '.map';
-        options.data = file.content.toString();
-        Sass.render(options, (err: any, result: SassResult) => {
-            err ? reject(err) : resolve(result)
-        });
-    });
-}
-
-
 export function sass(globFiles: Glob, options: SassOptions = {}) {
-    return plugin(plug => new Promise((resolve, reject) => {
+    return plugin(async plug => {
         if (options.sourceMap == null) {
             options.sourceMap = true;
         }
-        plug.findFiles(globFiles).then((files) => {
-            Promise.all(files.filter(file => file.updated).map(file => {
-                const cssName = file.dirname + file.basenameWithoutExt + '.css';
-                return render(file, cssName, options)
-                    .then(result => {
-                        plug.addFile(cssName, result.css, false);
-                        result.stats.includedFiles.map(fileName => plug.addFileFromFS(fileName));
-                        if (result.map) {
-                            plug.addFile(cssName + '.map', result.map, false);
-                        }
-                    })
-            })).then(resolve, reject);
-        })
-    }));
+        const files = await plug.findFiles(globFiles);
+        const updatedFiles = files.filter(file => file.updated);
+        for (let i = 0; i < updatedFiles.length; i++) {
+            const file = updatedFiles[i];
+            const cssName = file.dirname + file.basenameWithoutExt + '.css';
+    
+            options.file = file.fullName;
+            options.outFile = cssName + '.map';
+            options.data = file.content.toString();
+            const result = await sassRender(options);
+            plug.addFile(cssName, result.css, false);
+            for (let j = 0; j < result.stats.includedFiles.length; j++) {
+                const filename = result.stats.includedFiles[j];
+                await plug.addFileFromFS(filename)
+            }
+            if (result.map) {
+                plug.addFile(cssName + '.map', result.map, false);
+            }
+        }
+    });
 }

@@ -1,10 +1,9 @@
 import {plugin, Glob} from './packer';
 
 export function copy(globFiles: Glob) {
-    return plugin(plug => new Promise((resolve, reject) => {
-        plug.findFiles(globFiles).then(files => {
-            files.forEach(file => plug.addDistFile(file.relativeName, file.content));
-            resolve();
-        });
-    }));
+    return plugin(async plug => {
+        const files = await plug.findFiles(globFiles);
+        files.forEach(file =>
+            plug.addDistFile(file.relativeName, file.content));
+    });
 }

@@ -23,7 +23,7 @@ var global = window;
 `;
 
 export function combineJS(outfile: string) {
-    return plugin(plug => new Promise((resolve, reject) => {
+    return plugin(async plug => {
         let superFooter = '';
         for (let i = 0; i < plug.jsEntries.length; i++) {
             const entry = plug.jsEntries[i];
@@ -32,9 +32,9 @@ export function combineJS(outfile: string) {
         superFooter += '\n})()';
         const files = plug.list.filter(file => file.ext == 'js');
         if (files.length) {
-            combine(superHeader, superFooter, outfile, plug, files, (file) => `__packer(${file.numberName}, function(require, module, exports) \{\n`, () => '\n});\n', resolve);
+            await combine(superHeader, superFooter, outfile, plug, files, (file) => `__packer(${file.numberName}, function(require, module, exports) \{\n`, () => '\n});\n');
         } else {
             plug.log('Nothing to combine js')
         }
-    }));
+    });
 }
