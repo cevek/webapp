@@ -1,5 +1,5 @@
-import {JSScanner} from './jsScanner';
-import {plugin} from './packer';
+import {JSScanner} from '../utils/jsParser/jsScanner';
+import {plugin} from '../packer';
 
 let jsScanner: JSScanner;
 export function scanner() {

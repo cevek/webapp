@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import {promisify} from './promisify';
+import {promisify} from './utils/promisify';
 
 const gaze = require('gaze');
 const chokidar = require('chokidar');

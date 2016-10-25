@@ -1,4 +1,4 @@
-import {plugin, Glob} from './packer';
+import {plugin, Glob} from '../packer';
 
 export function copy(globFiles: Glob) {
     return plugin(async plug => {

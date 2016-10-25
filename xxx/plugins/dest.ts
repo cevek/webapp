@@ -1,4 +1,4 @@
-import {plugin} from './packer';
+import {plugin} from '../packer';
 
 export function dest() {
     return plugin(async plug => {
@@ -12,7 +12,7 @@ export function dest() {
         }
         for (let i = 0; i < newFiles.length; i++) {
             const file = newFiles[i];
-            file.writeFileToFS();
+            await file.writeFileToFS();
         }
     });
 }

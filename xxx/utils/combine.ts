@@ -1,4 +1,4 @@
-import {SourceMap, FileItem, Plug} from './packer';
+import {SourceMap, FileItem, Plug} from '../packer';
 import {encode, sourcemapDiffCalc} from './sourcemaps';
 
 function lineCount(content: string) {

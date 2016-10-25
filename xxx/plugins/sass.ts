@@ -1,6 +1,6 @@
-import {plugin, Glob} from './packer';
+import {plugin, Glob} from '../packer';
 import path = require('path');
-import {promisify} from './promisify';
+import {promisify} from '../utils/promisify';
 
 const sassRender: (options: SassOptions) => Promise<SassResult> = promisify(require('node-sass').render);
 interface SassOptions {

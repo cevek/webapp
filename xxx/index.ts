@@ -1,14 +1,14 @@
 import {Packer} from './packer';
-import {ts} from './ts';
-import {combineJS} from './combineJS';
-import {dest} from './dest';
-import {combineCSS} from './combineCSS';
-import {sass} from './sass';
-import {jsEntry} from './jsEntry';
-import {hmr} from './hmr';
-import {scanner} from './scanner';
-import {copy} from './copy';
-import {conditional} from './conditional';
+import {ts} from './plugins/ts';
+import {combineJS} from './plugins/combineJS';
+import {dest} from './plugins/dest';
+import {combineCSS} from './plugins/combineCSS';
+import {sass} from './plugins/sass';
+import {jsEntry} from './plugins/jsEntry';
+import {hmr} from './plugins/hmr';
+import {scanner} from './plugins/scanner';
+import {copy} from './plugins/copy';
+import {conditional} from './utils/conditional';
 
 
 // const prodOnly = conditional(() => process.env.NODE_ENV == 'production');

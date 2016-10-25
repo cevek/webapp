@@ -1,5 +1,5 @@
-import {plugin} from './packer';
-import {combine} from './combine';
+import {plugin} from '../packer';
+import {combine} from '../utils/combine';
 const superHeader = `
 (function () { 
 var __packerCache = [];

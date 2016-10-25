@@ -1,7 +1,7 @@
 import * as fs from 'fs';
-import {Plug, FileItem} from './packer';
+import {Plug, FileItem} from '../../packer';
 import {parseJS} from './jsParser';
-import {promisify} from './promisify';
+import {promisify} from '../promisify';
 
 const resolve: (module: string, options: ResolveOptions) => Promise<string> = promisify(require('resolve'));
 

@@ -1,4 +1,4 @@
-import {plugin, Glob, FileItem} from './packer';
+import {plugin, Glob, FileItem} from '../packer';
 import * as TS from 'typescript';
 import * as path from 'path';
 

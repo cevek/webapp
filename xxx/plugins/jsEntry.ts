@@ -1,4 +1,4 @@
-import {plugin} from './packer';
+import {plugin} from '../packer';
 
 export function jsEntry(filename: string) {
     return plugin(async plug => {
