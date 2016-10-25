@@ -1,5 +1,6 @@
 import {plugin} from '../packer';
 import {combine} from '../utils/combine';
+import {logger} from '../utils/logger';
 const superHeader = `
 (function () { 
 var __packerCache = [];
@@ -34,7 +35,7 @@ export function combineJS(outfile: string) {
         if (files.length) {
             await combine(superHeader, superFooter, outfile, plug, files, (file) => `__packer(${file.numberName}, function(require, module, exports) \{\n`, () => '\n});\n');
         } else {
-            plug.log('Nothing to combine js')
+            logger.warning('Nothing to combine js')
         }
     });
 }

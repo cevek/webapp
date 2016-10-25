@@ -1,5 +1,6 @@
 import {plugin} from '../packer';
 import {combine} from '../utils/combine';
+import {logger} from '../utils/logger';
 
 export function combineCSS(outfile: string) {
     return plugin(async plug => {
@@ -7,7 +8,7 @@ export function combineCSS(outfile: string) {
         if (files.length) {
             await combine('', '', outfile, plug, files, () => '', () => '\n');
         } else {
-            plug.log('Nothing to combine css');
+            logger.warning('Nothing to combine css');
         }
     });
 }

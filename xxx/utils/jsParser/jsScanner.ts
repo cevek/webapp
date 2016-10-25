@@ -1,11 +1,11 @@
 import * as fs from 'fs';
-import {Plug, FileItem} from '../../packer';
 import {parseJS} from './jsParser';
 import {promisify} from '../promisify';
+import {padRight} from '../common';
+import {Plug} from '../../packer';
+import {FileItem} from '../FileItem';
 
 const resolve: (module: string, options: ResolveOptions) => Promise<string> = promisify(require('resolve'));
-
-const pad = Array(500).join(' ');
 
 interface ResolveOptions {
     basedir?: string;
@@ -113,7 +113,7 @@ export class JSScanner {
             
             const len = imprt.endPos - imprt.startPos;
             // todo: check min len
-            code = code.substr(0, imprt.startPos) + (pad + imprt.file.numberName).substr(-len) + code.substr(imprt.endPos);
+            code = code.substr(0, imprt.startPos) + padRight(imprt.file.numberName, len) + code.substr(imprt.endPos);
         }
         file.setContent(code);
         

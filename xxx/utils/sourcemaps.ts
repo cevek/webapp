@@ -115,3 +115,15 @@ function encodeInteger(num: number) {
     
     return result;
 }
+
+
+export class SourceMap {
+    version = 3;
+    rootDir = '';
+    sources: string[] = [];
+    mappings = '';
+    
+    toString() {
+        return JSON.stringify(this);
+    }
+}

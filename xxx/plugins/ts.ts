@@ -1,13 +1,14 @@
-import {plugin, Glob, FileItem} from '../packer';
 import * as TS from 'typescript';
 import * as path from 'path';
+import {logger} from '../utils/logger';
+import {plugin} from '../packer';
 
 export function ts(options: TS.CompilerOptions = {}) {
     return plugin(async plug => {
         options.outDir = plug.options.dest;
         const configFileName = (options && options.project) || TS.findConfigFile(plug.options.context, TS.sys.fileExists);
-        plug.log('Using ' + configFileName);
         const file = await plug.addFileFromFS(configFileName);
+        logger.info('Using ' + file.relativeName);
         const result = TS.parseConfigFileTextToJson(configFileName, file.content.toString());
         const configObject = result.config;
         const configParseResult = TS.parseJsonConfigFileContent(configObject, TS.sys, path.dirname(file.fullName), options, file.fullName);
@@ -41,7 +42,7 @@ export function ts(options: TS.CompilerOptions = {}) {
         const emitOutput = program.emit();
         diagnostics = diagnostics.concat(emitOutput.diagnostics);
         if (diagnostics.length) {
-            plug.log(diagnostics);
+            logger.error(diagnostics.toString());
         }
     });
 }
