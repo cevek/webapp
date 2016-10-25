@@ -1,19 +1,7 @@
 import * as path from 'path';
-import * as fs from 'fs';
-import {promisify} from './utils/promisify';
-
-const gaze = require('gaze');
-const chokidar = require('chokidar');
-import crypto = require('crypto');
-
-const writeFile: (filename: string, content: string | Buffer) => Promise<Buffer> = promisify(fs.writeFile, fs);
-const readFile: (filename: string) => Promise<Buffer> = promisify(fs.readFile, fs);
-const glob: (glob: Glob, options: GlobOptions) => Promise<string[]> = promisify(require("glob"));
-const mkdirp: (dirname: string) => Promise<string[]> = promisify(require('mkdirp'));
-
-interface GlobOptions {
-    cwd?: string;
-}
+import {FileItem} from './utils/FileItem';
+import {glob, Glob, readFile, readFileSync} from './utils/fs';
+import {logger} from './utils/logger';
 
 interface PackerOptions {
     context: string;
@@ -31,7 +19,7 @@ export class Packer {
         const startedAt = process.hrtime();
         await this.executor(Promise.resolve(this.plug));
         const diff = process.hrtime(startedAt);
-        console.log(`Process time: ${(diff[0] * 1000 + diff[1] / 1e6 | 0)}ms`);
+        logger.info(`Process time: ${(diff[0] * 1000 + diff[1] / 1e6 | 0)}ms`);
     }
     
     async watch() {
@@ -49,21 +37,9 @@ export function plugin(fn: (plug: Plug)=>Promise<void>) {
     }
 }
 
-
 export class Plug {
     options: PackerOptions;
-    watcher: any;
     jsEntries: FileItem[] = [];
-    
-    private cacheData: any = Object.create(null);
-    
-    getCache(name: string): any {
-        let cacheItem = this.cacheData[name];
-        if (!cacheItem) {
-            cacheItem = this.cacheData[name] = Object.create(null);
-        }
-        return cacheItem;
-    }
     
     constructor(options: PackerOptions) {
         const defaultOptions = {
@@ -81,12 +57,6 @@ export class Plug {
         if (this.options.dest) {
             this.options.dest = this.normalizeName(this.options.dest);
         }
-        
-        /*
-         this.watcher = gaze(null, {
-         cwd: this.options.context
-         });
-         */
     }
     
     readonly list: FileItem[] = [];
@@ -153,24 +123,6 @@ export class Plug {
         return this;
     }
     
-    async readFile(filename: string) {
-        
-        return new Promise<Buffer>((resolve, reject) => {
-            fs.readFile(filename, (err, data) => {
-                err ? reject(err) : resolve(data)
-            })
-        });
-    }
-    
-    fileExists(filename: string) {
-        return new Promise<boolean>(resolve => {
-            fs.access(filename, (fs as any).F_OK, err => resolve(!err));
-        });
-    }
-    
-    readFileSync(filename: string) {
-        return fs.readFileSync(filename);
-    }
     
     addFileFromFSSync(filename: string, content?: string | Buffer) {
         let file = this.getFileByName(filename);
@@ -178,7 +130,7 @@ export class Plug {
             return file;
         } else {
             // this.watcher.add(filename);
-            const data = content || this.readFileSync(filename);
+            const data = content || readFileSync(filename);
             file = this.addFile(filename, data, true);
             // console.log("Watched", file.relativeName);
             return file;
@@ -195,10 +147,6 @@ export class Plug {
             const data = await readFile(filename);
             return this.addFile(filename, data, true);
         }
-    }
-    
-    log(message: any, ...args: any[]) {
-        console.log(message, ...args);
     }
     
     async findFiles(filesGlob: Glob): Promise<FileItem[]> {
@@ -234,92 +182,23 @@ export class Plug {
          });
          */
     }
-}
-
-
-export class SourceMap {
-    version = 3;
-    rootDir = '';
-    sources: string[] = [];
-    mappings = '';
     
-    toString() {
-        return JSON.stringify(this);
-    }
-}
-
-export class FileItem {
-    constructor(fullName: string, content: Buffer, public context: string, fromFileSystem: boolean, isSourceMap?: boolean) {
-        this.fromFileSystem = fromFileSystem;
-        this.setName(fullName);
-        this.setContent(content);
-        this.updated = true;
-    }
+    private cacheData: any = Object.create(null);
     
-    fromFileSystem: boolean;
-    fullName: string;
-    numberName: number;
-    relativeName: string;
-    updated: boolean;
-    hash: string;
-    content: Buffer;
-    sourcemap: SourceMap;
-    sourcemapFile: FileItem;
-    isSourceMap: boolean;
-    
-    get basename() {
-        return path.basename(this.fullName);
-    }
-    
-    get ext() {
-        return path.extname(this.fullName).substr(1);
-    }
-    
-    get basenameWithoutExt() {
-        return this.basename.replace(/\.[^.]+$/, '');
-    }
-    
-    get dirname() {
-        return path.dirname(this.fullName) + '/';
-    }
-    
-    get relativeDirname() {
-        return path.dirname(this.relativeName);
-    }
-    
-    // lines = 0;
-    // size = 0;
-    
-    imports: FileItem[];
-    importsBy: FileItem[];
-    
-    setName(fullName: string) {
-        this.fullName = path.resolve(fullName);
-        this.relativeName = path.relative(this.context, this.fullName);
-    }
-    
-    setContent(content: string | Buffer) {
-        content = typeof content === 'string' ? new Buffer(content) : content;
-        const hash = crypto.createHash('md5').update(content.toString()).digest().toString();
-        if (hash !== this.hash) {
-            this.content = content;
-            this.hash = hash;
-            this.updated = true;
+    getCache(name: string): any {
+        let cacheItem = this.cacheData[name];
+        if (!cacheItem) {
+            cacheItem = this.cacheData[name] = Object.create(null);
         }
-    }
-    
-    async writeFileToFS(): Promise<void> {
-        await mkdirp(path.dirname(this.fullName));
-        //todo
-        console.log('Emit file: ' + this.fullName);
-        await writeFile(this.fullName, this.content);
-        this.updated = true;
+        return cacheItem;
     }
     
 }
 
 
-export type Glob = string | string[] | RegExp | RegExp[];
+
+
+
 
 
 

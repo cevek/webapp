@@ -119,9 +119,10 @@ function encodeInteger(num: number) {
 
 export class SourceMap {
     version = 3;
-    rootDir = '';
+    sourceRoot = '';
     sources: string[] = [];
     mappings = '';
+    sourcesContent: string[] = [];
     
     toString() {
         return JSON.stringify(this);

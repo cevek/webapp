@@ -6,6 +6,8 @@ import {plugin} from '../packer';
 export function ts(options: TS.CompilerOptions = {}) {
     return plugin(async plug => {
         options.outDir = plug.options.dest;
+        options.sourceMap = true;
+        options.inlineSourceMap = false;
         const configFileName = (options && options.project) || TS.findConfigFile(plug.options.context, TS.sys.fileExists);
         const file = await plug.addFileFromFS(configFileName);
         logger.info('Using ' + file.relativeName);

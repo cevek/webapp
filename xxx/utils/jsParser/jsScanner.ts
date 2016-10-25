@@ -94,6 +94,7 @@ export class JSScanner {
         if (this.scanned[file.fullName]) {
             return null;
         }
+        this.scanned[file.fullName] = true;
         file.numberName = this.number++;
         let code = file.content.toString();
         const imports = this.findImports(code);
@@ -108,7 +109,6 @@ export class JSScanner {
             });
             imprt.file = this.plug.getFileByName(moduleResolvedUrl);
             file.imports.push(imprt.file);
-            this.scanned[file.fullName] = true;
             await this.scan(imprt.file);
             
             const len = imprt.endPos - imprt.startPos;
