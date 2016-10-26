@@ -3,7 +3,7 @@ export function formatBytes(bytes: number) {
     if (kb >= 1024) {
         return (kb / 1024).toFixed(2) + ' MB';
     }
-    return Math.round(kb) + ' kB';
+    return Math.round(Math.max(kb, 1)) + ' kB';
 }
 
 export function padLeft(value: string | number, size: number, sym: string = ' ') {

@@ -62,8 +62,14 @@ export class Plug {
     readonly list: FileItem[] = [];
     //todo: listHash
     
-    addDistFile(fullname: string, content: string | Buffer) {
-        return this.addFile(fullname, content, false);
+    addDistFile(fullname: string, content: string | Buffer, originals?: FileItem | FileItem[]) {
+        const distFile = this.addFile(fullname, content, false);
+        if (originals instanceof Array) {
+            distFile.originals.push(...originals);
+        } else if (originals) {
+            distFile.originals.push(originals);
+        }
+        return distFile;
     }
     
     addFile(fullname: string, content: string | Buffer, fromFileSystem: boolean): FileItem {

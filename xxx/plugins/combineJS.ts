@@ -20,8 +20,7 @@ var process = {
         NODE_ENV: ''
     }
 };
-var global = window; 
-`;
+var global = window;\n`;
 
 export function combineJS(outfile: string) {
     return plugin(async plug => {
@@ -31,7 +30,7 @@ export function combineJS(outfile: string) {
             superFooter += `\nrequire(${entry.numberName});`;
         }
         superFooter += '\n})()';
-        const files = plug.list.filter(file => file.ext == 'js');
+        const files = plug.list.filter(file => file.ext == 'js' && file.numberName != null);
         if (files.length) {
             await combine(superHeader, superFooter, outfile, plug, files, (file) => `__packer(${file.numberName}, function(require, module, exports) \{\n`, () => '\n});\n');
         } else {

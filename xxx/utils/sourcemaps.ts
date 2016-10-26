@@ -128,3 +128,128 @@ export class SourceMap {
         return JSON.stringify(this);
     }
 }
+
+
+export class SourceMapWriter {
+    private mappings: string[] = [];
+    private sources: string[] = [];
+    private sourcesContent: string[] = [];
+    
+    private genLineNum = 0;
+    
+    private genColNum = 0;
+    private prevGenColNum = 0;
+    
+    private fileNum = 0;
+    private prevFileNum = 0;
+    
+    private colNum = 0;
+    private prevColNum = 0;
+    private lineNum = 0;
+    private prevLineNum = 0;
+    
+    
+    writeSegment() {
+        this.mappings.push(encode([
+            this.genColNum - this.prevGenColNum/*gen col*/,
+            this.fileNum - this.prevFileNum/*source shift*/,
+            this.lineNum - this.prevLineNum/* orig line shift*/,
+            this.colNum - this.prevColNum/* orig col shift*/
+        ]));
+        this.prevGenColNum = this.genColNum;
+        this.prevFileNum = this.fileNum;
+        this.prevLineNum = this.lineNum;
+        this.prevColNum = this.colNum;
+    }
+    
+    writeNextLine() {
+        this.mappings.push(';');
+        this.genLineNum++;
+        this.genColNum = 0;
+        this.prevGenColNum = 0;
+    }
+    
+    
+    skipCode(content: string) {
+        // this.mappings.push(encode([this.genColNum/*gen col*/, 0/*source shift*/, 0/* orig line shift*/, -this.colNum/* orig col shift*/]));
+        // this.colNum = 0;
+        let i = -1;
+        let len = content.length;
+        while (i++ < len) {
+            if (content.charCodeAt(i) === 10 /*\n*/) {
+                this.writeNextLine();
+            }
+        }
+    }
+    
+    putFile(content: string, sourceName: string) {
+        this.sources.push(sourceName);
+        this.sourcesContent.push(content);
+        // const perFile: any[] = [];
+        this.lineNum = 0;
+        this.colNum = 0;
+        this.writeSegment();
+        let i = -1;
+        let len = content.length;
+        while (i++ < len) {
+            if (content.charCodeAt(i) === 10 /*\n*/) {
+                this.writeSegment();
+                this.writeNextLine();
+                
+                this.lineNum++;
+                this.colNum = 0;
+                this.writeSegment();
+                continue;
+            }
+            this.colNum++;
+            this.genColNum++;
+        }
+        this.fileNum++;
+    }
+    
+    putExistSourceMap(sourceMap: SourceMap) {
+        const sourcesCount = sourceMap.sources.length;
+        for (let i = 0; i < sourcesCount; i++) {
+            this.sources.push(sourceMap.sources[i]);
+            this.sourcesContent.push(sourceMap.sourcesContent[i] || '');
+        }
+        this.colNum = 0;
+        this.lineNum = 0;
+        this.writeSegment();
+        this.mappings.push(sourceMap.mappings);
+        const diff = sourcemapDiffCalc(sourceMap.mappings);
+        let count = 0;
+        for (let i = 0; i < sourceMap.mappings.length; i++) {
+            const sym = sourceMap.mappings[i];
+            if (sym === ';') count++;
+        }
+        
+        this.genLineNum += diff.genLine;
+        
+        this.genColNum = diff.genCol;
+        this.prevGenColNum = diff.genCol;
+        
+        this.fileNum += sourcesCount;
+        // todo: why?
+        this.prevFileNum += diff.filePos;
+        
+        this.lineNum += diff.line;
+        this.prevLineNum = diff.line;
+        
+        this.colNum += diff.col;
+        this.prevColNum = diff.col;
+    
+        //todo: why?
+        this.writeNextLine();
+    }
+    
+    toSourceMap() {
+        const sm = new SourceMap();
+        sm.sourcesContent = this.sourcesContent;
+        sm.sources = this.sources;
+        sm.mappings = this.mappings.join(',').replace(/,?;,?/g, ';');
+        // console.log(sm.mappings);
+        // console.log(this.fileNum);
+        return sm;
+    }
+}

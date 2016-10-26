@@ -6,6 +6,7 @@ import {logger} from './logger';
 import {formatBytes, padRight, padLeft} from './common';
 
 export class FileItem {
+    originals: FileItem[] = [];
     constructor(fullName: string, content: Buffer, public context: string, fromFileSystem: boolean, isSourceMap?: boolean) {
         this.fromFileSystem = fromFileSystem;
         this.setName(fullName);
