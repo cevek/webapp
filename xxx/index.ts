@@ -32,10 +32,8 @@ new Packer({dest: 'dist', context: __dirname + '/../src/'}, promise => promise
      .then(hash())
      .then(jade())
      .then(dest())*/
-).process().then(() => {
-    console.log("Done");
-}, (err) => {
-    console.error(err.stack)
+).watch(() => {
+    
 });
 
 

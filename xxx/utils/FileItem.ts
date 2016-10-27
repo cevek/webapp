@@ -5,8 +5,11 @@ import {mkdirp, writeFile} from './fs';
 import {logger} from './logger';
 import {formatBytes, padRight, padLeft} from './common';
 
+let id = 1;
 export class FileItem {
+    id = id++;
     originals: FileItem[] = [];
+    
     constructor(fullName: string, content: Buffer, public context: string, fromFileSystem: boolean, isSourceMap?: boolean) {
         this.fromFileSystem = fromFileSystem;
         this.setName(fullName);
@@ -48,8 +51,7 @@ export class FileItem {
     // lines = 0;
     // size = 0;
     
-    imports: FileItem[];
-    importsBy: FileItem[];
+    imports: Import[];
     
     setName(fullName: string) {
         this.fullName = path.resolve(fullName);
@@ -72,4 +74,16 @@ export class FileItem {
         await writeFile(this.fullName, this.content);
         this.updated = true;
     }
+    
+    toString() {
+        return `FileItem<${this.relativeName}>`;
+    }
+}
+
+
+export class Import {
+    file: FileItem;
+    module: string;
+    startPos: number;
+    endPos: number;
 }

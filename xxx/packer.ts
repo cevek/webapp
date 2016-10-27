@@ -2,6 +2,8 @@ import * as path from 'path';
 import {FileItem} from './utils/FileItem';
 import {glob, Glob, readFile, readFileSync} from './utils/fs';
 import {logger} from './utils/logger';
+import chokidar = require('chokidar');
+
 
 interface PackerOptions {
     context: string;
@@ -9,21 +11,41 @@ interface PackerOptions {
 }
 
 export class Packer {
-    protected plug = new Plug(this.options);
+    protected plug: Plug;
+    
     
     constructor(protected options: PackerOptions, protected executor: (promise: Promise<Plug>)=>Promise<Plug>) {
         
     }
     
     async process() {
+        this.plug = new Plug(false, this.options);
         const startedAt = process.hrtime();
+        logger.info(`Build started...`);
         await this.executor(Promise.resolve(this.plug));
         const diff = process.hrtime(startedAt);
-        logger.info(`Process time: ${(diff[0] * 1000 + diff[1] / 1e6 | 0)}ms`);
+        logger.info(`Build done after ${(diff[0] * 1000 + diff[1] / 1e6 | 0)}ms`);
     }
     
-    async watch() {
-        
+    private async watchRunner(callback: () => void) {
+        this.plug.clear();
+        const startedAt = process.hrtime();
+        logger.info(`Incremental build started...`);
+        await this.executor(Promise.resolve(this.plug));
+        const diff = process.hrtime(startedAt);
+        logger.info(`Incremental build done after ${(diff[0] * 1000 + diff[1] / 1e6 | 0)}ms`);
+        callback();
+        // console.log(this.plug.watcher.getWatched());
+        this.plug.watcher.once('all', () => {
+            setTimeout(() => {
+                this.watchRunner(callback);
+            }, 50);
+        });
+    }
+    
+    async watch(callback: ()=>void) {
+        this.plug = new Plug(true, this.options);
+        this.watchRunner(callback);
     }
 }
 
@@ -40,8 +62,13 @@ export function plugin(fn: (plug: Plug)=>Promise<void>) {
 export class Plug {
     options: PackerOptions;
     jsEntries: FileItem[] = [];
+    list: FileItem[] = [];
+    watcher = chokidar.watch('');
     
-    constructor(options: PackerOptions) {
+    protected cacheData: any = Object.create(null);
+    protected fileCache: {[name: string]: FileItem} = {};
+    
+    constructor(public watchMode: boolean, options: PackerOptions) {
         const defaultOptions = {
             context: process.cwd(),
             dest: 'dist'
@@ -59,9 +86,6 @@ export class Plug {
         }
     }
     
-    readonly list: FileItem[] = [];
-    //todo: listHash
-    
     addDistFile(fullname: string, content: string | Buffer, originals?: FileItem | FileItem[]) {
         const distFile = this.addFile(fullname, content, false);
         if (originals instanceof Array) {
@@ -72,14 +96,19 @@ export class Plug {
         return distFile;
     }
     
-    addFile(fullname: string, content: string | Buffer, fromFileSystem: boolean): FileItem {
+    protected addFile(fullname: string, content: string | Buffer, fromFileSystem: boolean): FileItem {
+        if (!fromFileSystem) {
+            //console.log('add', fullname, this.normalizeDestName(fullname));
+        }
         fullname = fromFileSystem ? this.normalizeName(fullname) : this.normalizeDestName(fullname);
         let file = this.getFileByName(fullname);
         if (file) {
             return file;
         }
         file = new FileItem(fullname, typeof content == 'string' ? new Buffer(content) : content, this.options.context, fromFileSystem);
-        this.list.push(file);
+        if (!fromFileSystem) {
+            this.list.push(file);
+        }
         // this.listHash[file.fullName] = this.list.length - 1;
         
         //todo: get name from original file
@@ -103,6 +132,15 @@ export class Plug {
     }
     
     getFileByName(fullname: string): FileItem | undefined {
+        const file = this.fileCache[fullname];
+        if (!file) {
+            return this.list.find(file => file.fullName == fullname);
+            // throw new Error(`File ${fullname} not found`);
+        }
+        return file;
+    }
+    
+    getDistFileByName(fullname: string): FileItem | undefined {
         const file = this.list.find(file => file.fullName == fullname);
         if (!file) {
             // throw new Error(`File ${fullname} not found`);
@@ -117,7 +155,14 @@ export class Plug {
     
     normalizeDestName(filename: string) {
         filename = path.normalize(filename);
-        return path.isAbsolute(filename) ? filename : path.normalize(this.options.dest + '/' + filename);
+        if (path.isAbsolute(filename)) {
+            filename = path.relative(this.options.dest, filename);
+            // console.log('rel', filename);
+        }
+        
+        //todo: check
+        filename = filename.replace(/\.\.\//g, '');
+        return path.normalize(this.options.dest + '/' + filename);
     }
     
     removeFile(file: FileItem) {
@@ -132,27 +177,25 @@ export class Plug {
     
     addFileFromFSSync(filename: string, content?: string | Buffer) {
         let file = this.getFileByName(filename);
-        if (file) {
-            return file;
-        } else {
-            // this.watcher.add(filename);
+        if (!file) {
             const data = content || readFileSync(filename);
             file = this.addFile(filename, data, true);
-            // console.log("Watched", file.relativeName);
-            return file;
+            this.fileCache[filename] = file;
         }
+        this.watcher.add(filename);
+        return file;
     }
     
     async addFileFromFS(filename: string): Promise<FileItem> {
         filename = this.normalizeName(filename);
         let file = this.getFileByName(filename);
-        if (file) {
-            return file;
-        } else {
-            // this.watcher.add(filename);
+        if (!file) {
             const data = await readFile(filename);
-            return this.addFile(filename, data, true);
+            file = this.addFile(filename, data, true);
+            this.fileCache[filename] = file;
         }
+        this.watcher.add(filename);
+        return file;
     }
     
     async findFiles(filesGlob: Glob): Promise<FileItem[]> {
@@ -189,7 +232,6 @@ export class Plug {
          */
     }
     
-    private cacheData: any = Object.create(null);
     
     getCache(name: string): any {
         let cacheItem = this.cacheData[name];
@@ -199,10 +241,13 @@ export class Plug {
         return cacheItem;
     }
     
+    clear() {
+        this.watcher.close();
+        this.watcher = chokidar.watch('');
+        this.list = [];
+        this.jsEntries = [];
+    }
 }
-
-
-
 
 
 

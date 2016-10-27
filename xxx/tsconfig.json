@@ -5,6 +5,8 @@
     "noEmit": true,
     "noImplicitThis": true,
     "noImplicitAny": true,
+    "skipDefaultLibCheck": true,
+    "skipLibCheck": true,
     "suppressImplicitAnyIndexErrors": true,
     "sourceMap": true
   },

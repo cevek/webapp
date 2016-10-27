@@ -1,9 +1,10 @@
 import * as fs from 'fs';
+import * as path from 'path';
 import {parseJS} from './jsParser';
 import {promisify} from '../promisify';
 import {padRight} from '../common';
 import {Plug} from '../../packer';
-import {FileItem} from '../FileItem';
+import {FileItem, Import} from '../FileItem';
 
 const resolve: (module: string, options: ResolveOptions) => Promise<string> = promisify(require('resolve'));
 
@@ -41,6 +42,11 @@ export class JSScanner {
     
     private isFile = (filename: string, callback: (err: any, result: boolean) => void) => {
         filename = this.plug.normalizeName(filename);
+        //todo: optimize?
+        if (filename.indexOf('/node_modules/')> -1 && filename.indexOf(this.plug.options.dest) === 0) {
+            callback(null, false);
+            return;
+        }
         const file = this.plug.getFileByName(filename);
         if (!file) {
             fs.stat(filename, (err, stat) => {
@@ -71,7 +77,7 @@ export class JSScanner {
         const len = r.length;
         let start = 0;
         let end = 0;
-        const imports: {file: FileItem, module: string, startPos: number, endPos: number}[] = [];
+        const imports: Import[] = [];
         for (let i = 0; i < len; i += 3) {
             if (r[i] === 1 /*identifier*/) {
                 start = r[i + 1];
@@ -90,33 +96,31 @@ export class JSScanner {
         return imports;
     }
     
-    async scan(file: FileItem): Promise<void> {
+    async scan(file: FileItem, searchContext: string) {
         if (this.scanned[file.fullName]) {
             return null;
         }
         this.scanned[file.fullName] = true;
         file.numberName = this.number++;
+        // this.plug.numberedFiles.push(file);
+        // console.log('scan', file.relativeName, file.numberName);
+        // console.log('scan', file.id, file.fullName, file.numberName);
         let code = file.content.toString();
         const imports = this.findImports(code);
         
-        file.imports = [];
         for (let i = 0; i < imports.length; i++) {
             const imprt = imports[i];
             const moduleResolvedUrl = await resolve(imprt.module, {
-                basedir: file.dirname,
+                basedir: searchContext,
                 readFile: this.readFile,
                 isFile: this.isFile
             });
-            imprt.file = this.plug.getFileByName(moduleResolvedUrl);
-            file.imports.push(imprt.file);
-            await this.scan(imprt.file);
-            
-            const len = imprt.endPos - imprt.startPos;
-            // todo: check min len
-            code = code.substr(0, imprt.startPos) + padRight(imprt.file.numberName, len) + code.substr(imprt.endPos);
+            const imFile = this.plug.getFileByName(moduleResolvedUrl);
+            const distFile = this.plug.addDistFile(imFile.fullName, imFile.content);
+            imprt.file = distFile;
+            await this.scan(distFile, imFile.dirname);
         }
-        file.setContent(code);
-        
+        file.imports = imports;
         
         /*return Promise
          .all(

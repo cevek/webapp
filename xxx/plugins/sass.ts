@@ -1,6 +1,7 @@
-import {plugin, Glob} from '../packer';
+import {plugin} from '../packer';
 import path = require('path');
 import {promisify} from '../utils/promisify';
+import {Glob} from '../utils/fs';
 
 const sassRender: (options: SassOptions) => Promise<SassResult> = promisify(require('node-sass').render);
 interface SassOptions {
@@ -38,13 +39,13 @@ export function sass(globFiles: Glob, options: SassOptions = {}) {
             options.outFile = cssName + '.map';
             options.data = file.content.toString();
             const result = await sassRender(options);
-            plug.addFile(cssName, result.css, false);
+            plug.addDistFile(cssName, result.css);
             for (let j = 0; j < result.stats.includedFiles.length; j++) {
                 const filename = result.stats.includedFiles[j];
                 await plug.addFileFromFS(filename)
             }
             if (result.map) {
-                plug.addFile(cssName + '.map', result.map, false);
+                plug.addDistFile(cssName + '.map', result.map);
             }
         }
     });
