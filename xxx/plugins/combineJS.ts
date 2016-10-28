@@ -62,7 +62,7 @@ export function combineJS(outfile: string) {
             }
             return code;
         }
-    
+        
         let superFooter = '';
         for (let i = 0; i < plug.jsEntries.length; i++) {
             const file = plug.jsEntries[i];
@@ -70,25 +70,29 @@ export function combineJS(outfile: string) {
             superFooter = `\nrequire(${numberHash.get(file)});`;
         }
         superFooter += '\n})()';
-    
+        
         let bulk = superHeader;
         outfile = plug.normalizeDestName(outfile);
         const dirname = path.dirname(outfile);
         
         const smw = new SourceMapWriter();
         // files.sort((a, b) => a.numberName < b.numberName ? -1 : 1);
-    
+        
         smw.skipCode(superHeader);
         for (let [file, num] of numberHash) {
-            // console.log(file.relativeName, num);
-            const content = file.contentString.replace(/^\/\/[#@]\s+sourceMappingURL=.*$/mg, '');
+            let content = file.contentString;
+            const match = content.match(/^\/\/[#@]\s+sourceMappingURL=(.*?)$/m);
+            if (match) {
+                //todo: if inlined base64?
+                file.sourcemapFile = await plug.addFileFromFS(file.dirname + '/' + match[1]);
+                content = content.replace(/^\/\/[#@]\s+sourceMappingURL=.*$/mg, '');
+            }
             const header = `__packer(${num}, function(require, module, exports) \{\n`;
             const footer = '\n});\n';
             bulk += header + replaceImportsWithoutChangeLength(file) + footer;
             smw.skipCode(header);
             
             if (file.sourcemapFile) {
-    
                 const smFile = file.sourcemapFile;
                 const sm = JSON.parse(smFile.contentString) as SourceMap;
                 const realSources = sm.sources.map(filename => path.normalize(smFile.dirname + sm.sourceRoot + filename));
@@ -99,12 +103,11 @@ export function combineJS(outfile: string) {
                     const file = await plug.addFileFromFS(filename);
                     sm.sourcesContent.push(file.contentString);
                 }
-    
                 
                 smw.putExistSourceMap(sm);
                 if (!smFile.fromFileSystem) {
+                    //todo: maybe method?
                     smFile.updated = false;
-                    // plug.removeFile(smFile);
                 }
             } else {
                 smw.putFile(content, file.originals.length ? file.originals[0].relativeName : file.relativeName);
@@ -112,18 +115,19 @@ export function combineJS(outfile: string) {
             
             smw.skipCode(footer);
             if (!file.fromFileSystem) {
+                //todo:
                 file.updated = false;
             }
         }
-    
+        
         bulk += superFooter;
         smw.skipCode(superFooter);
-    
-    
+        
+        
         const sourceMap = smw.toSourceMap();
         const mapFile = plug.addDistFile(outfile + '.map', sourceMap.toString());
         bulk += '\n//# sourceMappingURL=' + mapFile.basename;
-
+        
         plug.addDistFile(outfile, bulk);
     });
 }

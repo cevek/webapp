@@ -44,7 +44,6 @@ export class Packer {
         this.plug.watcher.once('change', (filename: string) => {
             this.plug.clear();
             this.plug.addFileFromFS(filename, true).then(() => {
-                console.log('updated', filename);
                 setTimeout(() => {
                     this.watchRunner(callback);
                 }, 50);
