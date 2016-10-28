@@ -26,47 +26,26 @@ export class JSScanner {
     }
     
     private readFile = (filename: string, callback: (err: any, result: Buffer) => void): void => {
-        filename = this.plug.normalizeName(filename);
-        const file = this.plug.getFileByName(filename);
-        if (!file) {
-            this.plug.addFileFromFS(filename).then((file) => {
-                // console.log('realReadFile', filename);
-                callback(null, file.content);
-            }, (err) => {
-                callback(err, null);
-            })
-        } else {
+        this.plug.addFileFromFS(filename).then((file) => {
+            // console.log('realReadFile', filename);
             callback(null, file.content);
-        }
+        }, (err) => {
+            callback(err, null);
+        })
     };
     
     private isFile = (filename: string, callback: (err: any, result: boolean) => void) => {
         filename = this.plug.normalizeName(filename);
         //todo: optimize?
-        if (filename.indexOf('/node_modules/')> -1 && filename.indexOf(this.plug.options.dest) === 0) {
+        if (filename.indexOf('/node_modules/') > -1 && filename.indexOf(this.plug.options.dest) === 0) {
             callback(null, false);
             return;
         }
-        const file = this.plug.getFileByName(filename);
-        if (!file) {
-            fs.stat(filename, (err, stat) => {
-                if (err && err.code === 'ENOENT') {
-                    callback(null, false);
-                } else if (err) {
-                    callback(err, null);
-                } else if (stat.isFile()) {
-                    this.plug.addFileFromFS(filename).then(() => {
-                        callback(null, true);
-                    }, (err) => {
-                        callback(err, null);
-                    })
-                } else {
-                    callback(null, false);
-                }
-            });
-        } else {
-            callback(null, true);
-        }
+        // const destRelFilename = path.relative(filename, this.plug.options.dest);
+        this.plug.isFileExists(filename).then(result => {
+            // console.log(filename, result);
+            callback(null, result);
+        });
     };
     
     private scanned: any = {};
@@ -97,15 +76,18 @@ export class JSScanner {
     }
     
     async scan(file: FileItem, searchContext: string) {
-        if (this.scanned[file.fullName]) {
+        if (!file.updated || this.scanned[file.fullName]) {
+            // this.plug.measureEnd('scan');
             return null;
         }
+        // console.log(file.id, file.updated, file.fullName);
+        // this.plug.measureStart('scan2');
         this.scanned[file.fullName] = true;
-        file.numberName = this.number++;
+        // file.numberName = this.number++;
         // this.plug.numberedFiles.push(file);
         // console.log('scan', file.relativeName, file.numberName);
         // console.log('scan', file.id, file.fullName, file.numberName);
-        let code = file.content.toString();
+        let code = file.contentString;
         const imports = this.findImports(code);
         
         for (let i = 0; i < imports.length; i++) {
@@ -115,12 +97,15 @@ export class JSScanner {
                 readFile: this.readFile,
                 isFile: this.isFile
             });
-            const imFile = this.plug.getFileByName(moduleResolvedUrl);
+            
+            const imFile = await this.plug.addFileFromFS(moduleResolvedUrl);
             const distFile = this.plug.addDistFile(imFile.fullName, imFile.content);
+            
             imprt.file = distFile;
             await this.scan(distFile, imFile.dirname);
         }
         file.imports = imports;
+        // this.plug.measureEnd('scan2');
         
         /*return Promise
          .all(

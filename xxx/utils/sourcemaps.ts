@@ -1,5 +1,5 @@
-const charToInteger = {};
-const integerToChar = {};
+const charToInteger: {[n:string]: number} = {};
+const integerToChar:{[n:number]: string} = {};
 
 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='.split('').forEach(function (char, i) {
     charToInteger[char/*.codePointAt(0)*/] = i;
@@ -77,22 +77,11 @@ export function sourcemapDiffCalc(str: string) {
 }
 
 
-export function encode(value: number | number[]) {
-    let result: string;
-    let i: number;
-    
-    if (typeof value === 'number') {
-        result = encodeInteger(value);
-    } else {
-        result = '';
-        for (i = 0; i < value.length; i += 1) {
-            result += encodeInteger(value[i]);
-        }
-    }
-    
-    return result;
+export function encode(a: number, b: number, c: number, d: number) {
+    return encodeInteger(a) + encodeInteger(b) + encodeInteger(c) + encodeInteger(d);
 }
 
+// todo:deopts
 function encodeInteger(num: number) {
     let result = '';
     let clamped: number;
@@ -150,12 +139,12 @@ export class SourceMapWriter {
     
     
     writeSegment() {
-        this.mappings.push(encode([
+        this.mappings.push(encode(
             this.genColNum - this.prevGenColNum/*gen col*/,
             this.fileNum - this.prevFileNum/*source shift*/,
             this.lineNum - this.prevLineNum/* orig line shift*/,
             this.colNum - this.prevColNum/* orig col shift*/
-        ]));
+        ));
         this.prevGenColNum = this.genColNum;
         this.prevFileNum = this.fileNum;
         this.prevLineNum = this.lineNum;
@@ -175,7 +164,7 @@ export class SourceMapWriter {
         // this.colNum = 0;
         let i = -1;
         let len = content.length;
-        while (i++ < len) {
+        while (++i < len) {
             if (content.charCodeAt(i) === 10 /*\n*/) {
                 this.writeNextLine();
             }
@@ -191,7 +180,7 @@ export class SourceMapWriter {
         this.writeSegment();
         let i = -1;
         let len = content.length;
-        while (i++ < len) {
+        while (++i < len) {
             if (content.charCodeAt(i) === 10 /*\n*/) {
                 this.writeSegment();
                 this.writeNextLine();

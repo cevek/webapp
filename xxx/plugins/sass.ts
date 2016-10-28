@@ -25,7 +25,7 @@ interface SassResult {
 }
 
 export function sass(globFiles: Glob, options: SassOptions = {}) {
-    return plugin(async plug => {
+    return plugin('sass', async plug => {
         if (options.sourceMap == null) {
             options.sourceMap = true;
         }
@@ -37,7 +37,7 @@ export function sass(globFiles: Glob, options: SassOptions = {}) {
     
             options.file = file.fullName;
             options.outFile = cssName + '.map';
-            options.data = file.content.toString();
+            options.data = file.contentString;
             const result = await sassRender(options);
             plug.addDistFile(cssName, result.css);
             for (let j = 0; j < result.stats.includedFiles.length; j++) {

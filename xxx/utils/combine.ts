@@ -1,21 +1,27 @@
+/*
 import {SourceMapWriter, SourceMap} from './sourcemaps';
 import {Plug} from '../packer';
 import {FileItem} from './FileItem';
 import * as path from 'path';
 import {padRight} from './common';
 
-export async function combine(superHeader: string, superFooter: string, outfile: string, plug: Plug, files: FileItem[], headerFn: (file: FileItem) => string, footerFn: (file: FileItem)=>string) {
-    let bulk = superHeader;
+export async function combine(superHeaderFn: (entries: number[]) => string, superFooterFn: (entries: number[])=> string, outfile: string, plug: Plug, files: FileItem[], headerFn: (file: FileItem, n: number) => string, footerFn: (file: FileItem)=>string) {
+    let bulk = superHeaderFn;
     outfile = plug.normalizeDestName(outfile);
     const dirname = path.dirname(outfile);
     
     const smw = new SourceMapWriter();
-    smw.skipCode(superHeader);
     // files.sort((a, b) => a.numberName < b.numberName ? -1 : 1);
     
-    files.forEach((file) => {
+    
+    const superHeader = superHeaderFn();
+    smw.skipCode(superHeader);
+    
+    const keys = Object.keys(numberHash);
+    for (let i = 0; i < keys.length; i++) {
+        const {num, file} = numberHash[keys[i]];
         const content = file.content.toString().replace(/^\/\/[#@]\s+sourceMappingURL=.*$/mg, '');
-        const header = headerFn(file);
+        const header = headerFn(file, num);
         const footer = footerFn(file);
         bulk += header + replaceImportsWithoutChangeLength(file) + footer;
         smw.skipCode(header);
@@ -25,7 +31,12 @@ export async function combine(superHeader: string, superFooter: string, outfile:
             const sm = JSON.parse(smFile.content.toString()) as SourceMap;
             const realSources = sm.sources.map(filename => path.normalize(smFile.dirname + sm.sourceRoot + filename));
             sm.sources = realSources.map(filename => path.relative(dirname, filename));
-            sm.sourcesContent = realSources.map(filename => plug.getFileByName(filename).content.toString());
+            sm.sourcesContent = [];
+            for (let j = 0; j < realSources.length; j++) {
+                const filename = realSources[j];
+                const file = await plug.addFileFromFS(filename);
+                sm.sourcesContent.push(file.content.toString());
+            }
             smw.putExistSourceMap(sm);
         } else {
             smw.putFile(content, file.originals.length ? file.originals[0].relativeName : file.relativeName);
@@ -36,10 +47,11 @@ export async function combine(superHeader: string, superFooter: string, outfile:
             plug.removeFile(file.sourcemapFile);
         }
         plug.removeFile(file);
-    });
+    }
     
-    bulk += superFooter;
-    smw.skipCode(superFooter);
+    
+    bulk += superFooterFn;
+    smw.skipCode(superFooterFn);
     const sourceMap = smw.toSourceMap();
     const mapFile = plug.addDistFile(outfile + '.map', sourceMap.toString());
     bulk += '\n//# sourceMappingURL=' + mapFile.basename;
@@ -47,15 +59,5 @@ export async function combine(superHeader: string, superFooter: string, outfile:
     plug.addDistFile(outfile, bulk);
 }
 
-function replaceImportsWithoutChangeLength(file: FileItem) {
-    let code = file.content.toString();
-    if (file.imports) {
-        for (let i = 0; i < file.imports.length; i++) {
-            const imprt = file.imports[i];
-            const len = imprt.endPos - imprt.startPos;
-            // todo: check min len
-            code = code.substr(0, imprt.startPos) + padRight(imprt.file.numberName, len) + code.substr(imprt.endPos);
-        }
-    }
-    return code;
-}
+
+*/

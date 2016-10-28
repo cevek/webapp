@@ -1,6 +1,10 @@
 import {plugin} from '../packer';
-import {combine} from '../utils/combine';
-import {logger} from '../utils/logger';
+import {JSScanner} from '../utils/jsParser/jsScanner';
+import {FileItem} from '../utils/FileItem';
+import {padRight} from '../utils/common';
+import {SourceMapWriter, SourceMap} from '../utils/sourcemaps';
+import * as path from 'path';
+
 const superHeader = `
 (function () { 
 var __packerCache = [];
@@ -23,18 +27,103 @@ var process = {
 var global = window;\n`;
 
 export function combineJS(outfile: string) {
-    return plugin(async plug => {
+    return plugin('combineJS', async plug => {
+        const jsScanner = new JSScanner(plug);
+        for (let i = 0; i < plug.jsEntries.length; i++) {
+            const file = plug.jsEntries[i];
+            await jsScanner.scan(file, file.dirname);
+        }
+        
+        const numberHash = new Map<FileItem, number>();
+        let num = 0;
+        
+        function numbers(file: FileItem) {
+            if (numberHash.has(file)) {
+                return;
+            }
+            numberHash.set(file, num++);
+            if (file.imports) {
+                for (let i = 0; i < file.imports.length; i++) {
+                    const imprt = file.imports[i];
+                    numbers(imprt.file);
+                }
+            }
+        }
+        
+        function replaceImportsWithoutChangeLength(file: FileItem) {
+            let code = file.contentString;
+            if (file.imports) {
+                for (let i = 0; i < file.imports.length; i++) {
+                    const imprt = file.imports[i];
+                    const len = imprt.endPos - imprt.startPos;
+                    // todo: check min len
+                    code = code.substr(0, imprt.startPos) + padRight(numberHash.get(imprt.file), len) + code.substr(imprt.endPos);
+                }
+            }
+            return code;
+        }
+    
         let superFooter = '';
         for (let i = 0; i < plug.jsEntries.length; i++) {
-            const entry = plug.jsEntries[i];
-            superFooter += `\nrequire(${entry.numberName});`;
+            const file = plug.jsEntries[i];
+            numbers(file);
+            superFooter = `\nrequire(${numberHash.get(file)});`;
         }
         superFooter += '\n})()';
-        const files = plug.list.filter(file => file.ext == 'js' && file.numberName != null);
-        if (files.length) {
-            await combine(superHeader, superFooter, outfile, plug, files, (file) => `__packer(${file.numberName}, function(require, module, exports) \{\n`, () => '\n});\n');
-        } else {
-            logger.warning('Nothing to combine js')
+    
+        let bulk = superHeader;
+        outfile = plug.normalizeDestName(outfile);
+        const dirname = path.dirname(outfile);
+        
+        const smw = new SourceMapWriter();
+        // files.sort((a, b) => a.numberName < b.numberName ? -1 : 1);
+    
+        smw.skipCode(superHeader);
+        for (let [file, num] of numberHash) {
+            // console.log(file.relativeName, num);
+            const content = file.contentString.replace(/^\/\/[#@]\s+sourceMappingURL=.*$/mg, '');
+            const header = `__packer(${num}, function(require, module, exports) \{\n`;
+            const footer = '\n});\n';
+            bulk += header + replaceImportsWithoutChangeLength(file) + footer;
+            smw.skipCode(header);
+            
+            if (file.sourcemapFile) {
+    
+                const smFile = file.sourcemapFile;
+                const sm = JSON.parse(smFile.contentString) as SourceMap;
+                const realSources = sm.sources.map(filename => path.normalize(smFile.dirname + sm.sourceRoot + filename));
+                sm.sources = realSources.map(filename => path.relative(dirname, filename));
+                sm.sourcesContent = [];
+                for (let j = 0; j < realSources.length; j++) {
+                    const filename = realSources[j];
+                    const file = await plug.addFileFromFS(filename);
+                    sm.sourcesContent.push(file.contentString);
+                }
+    
+                
+                smw.putExistSourceMap(sm);
+                if (!smFile.fromFileSystem) {
+                    smFile.updated = false;
+                    // plug.removeFile(smFile);
+                }
+            } else {
+                smw.putFile(content, file.originals.length ? file.originals[0].relativeName : file.relativeName);
+            }
+            
+            smw.skipCode(footer);
+            if (!file.fromFileSystem) {
+                file.updated = false;
+            }
         }
+    
+        bulk += superFooter;
+        smw.skipCode(superFooter);
+    
+    
+        const sourceMap = smw.toSourceMap();
+        const mapFile = plug.addDistFile(outfile + '.map', sourceMap.toString());
+        bulk += '\n//# sourceMappingURL=' + mapFile.basename;
+
+        plug.addDistFile(outfile, bulk);
     });
 }

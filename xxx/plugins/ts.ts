@@ -2,31 +2,67 @@ import * as TS from 'typescript';
 import * as path from 'path';
 import {logger} from '../utils/logger';
 import {plugin} from '../packer';
+import {FileItem} from '../utils/FileItem';
+
+interface Cache {
+    program: TS.Program;
+    oldConfigFile: FileItem;
+    configParseResult: TS.ParsedCommandLine;
+    compilerOptions: TS.CompilerOptions;
+    compilerHost: TS.CompilerHost;
+}
 
 export function ts(options: TS.CompilerOptions = {}) {
-    return plugin(async plug => {
+    return plugin('ts', async plug => {
+        //todo: use plug fs methods
+        const cache = plug.getCache('ts') as Cache;
+        
         options.outDir = plug.options.dest;
         options.sourceMap = true;
         options.inlineSourceMap = false;
-        const configFileName = (options && options.project) || TS.findConfigFile(plug.options.context, TS.sys.fileExists);
-        const file = await plug.addFileFromFS(configFileName);
-        logger.info('Using ' + file.relativeName);
-        const result = TS.parseConfigFileTextToJson(configFileName, file.content.toString());
-        const configObject = result.config;
-        const configParseResult = TS.parseJsonConfigFileContent(configObject, TS.sys, path.dirname(file.fullName), options, file.fullName);
-        const compilerOptions = configParseResult.options;
         
-        const compilerHost = TS.createCompilerHost(compilerOptions);
-        compilerHost.writeFile = (file, data) => {
-            plug.addDistFile(file, data);
-        };
-        /*
-         //todo:
-         compilerHost.getSourceFile = function () {
-         
-         };
-         */
-        const program = TS.createProgram(configParseResult.fileNames, compilerOptions, compilerHost);
+        //todo: check if tsconfig.json not found
+        const configFileName = (options && options.project) || TS.findConfigFile(plug.options.context, TS.sys.fileExists);
+        const configFile = await plug.addFileFromFS(configFileName);
+        
+        if (!cache.program || cache.oldConfigFile !== configFile || configFile.updated) {
+            cache.oldConfigFile = configFile;
+            logger.info('Using ' + configFile.relativeName);
+            const result = TS.parseConfigFileTextToJson(configFileName, configFile.contentString);
+            const configObject = result.config;
+            cache.configParseResult = TS.parseJsonConfigFileContent(configObject, TS.sys, path.dirname(configFile.fullName), options, configFile.fullName);
+            cache.compilerOptions = cache.configParseResult.options;
+            
+            cache.compilerHost = TS.createCompilerHost(cache.compilerOptions);
+            const hostGetSourceFile = cache.compilerHost.getSourceFile;
+            cache.compilerHost.getSourceFile = function (fileName: string, languageVersion: TS.ScriptTarget, onError?: (message: string) => void) {
+                const file = plug.getFileFromCache(fileName);
+                // console.log('getSourceFile', fileName);
+                // Return existing SourceFile object if one is available
+                if (cache.program && file && !file.updated) {
+                    const sourceFile = cache.program.getSourceFile(fileName);
+                    // console.log('getSourceFile from program', sourceFile.fileName, sourceFile.path);
+                    if (sourceFile && sourceFile.path) {
+                        return sourceFile;
+                    }
+                }
+                // Use default host function
+                return hostGetSourceFile(fileName, languageVersion, onError);
+            };
+            
+            cache.compilerHost.fileExists = function (filename: string) {
+                return plug.isFileExistsSync(filename);
+            };
+            
+            cache.compilerHost.directoryExists = function (filename: string) {
+                return plug.dirExistsSync(filename);
+            };
+            
+            cache.compilerHost.writeFile = (file, data) => {
+                plug.addDistFile(file, data);
+            };
+        }
+        const program = TS.createProgram(cache.configParseResult.fileNames, cache.compilerOptions, cache.compilerHost);
         // First get and report any syntactic errors.
         let diagnostics = program.getSyntacticDiagnostics();
         program.getSourceFiles().forEach(file =>
@@ -43,8 +79,10 @@ export function ts(options: TS.CompilerOptions = {}) {
         // Otherwise, emit and report any errors we ran into.
         const emitOutput = program.emit();
         diagnostics = diagnostics.concat(emitOutput.diagnostics);
+        //todo:
         if (diagnostics.length) {
             logger.error(diagnostics.toString());
         }
+        cache.program = program;
     });
 }

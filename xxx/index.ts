@@ -6,7 +6,6 @@ import {combineCSS} from './plugins/combineCSS';
 import {sass} from './plugins/sass';
 import {jsEntry} from './plugins/jsEntry';
 import {hmr} from './plugins/hmr';
-import {scanner} from './plugins/scanner';
 import {copy} from './plugins/copy';
 import {conditional} from './utils/conditional';
 
@@ -21,7 +20,6 @@ new Packer({dest: 'dist', context: __dirname + '/../src/'}, promise => promise
         // .then(jsEntry('test/r.js'))
         .then(prodOnly(copy('index.html')))
         // .then(sass('index.scss'))
-        .then(scanner())
         .then(combineJS('bundle.js'))
         // .then(combineCSS('style.css'))
         .then(dest())

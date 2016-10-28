@@ -6,27 +6,36 @@ import {logger} from './logger';
 import {formatBytes, padRight, padLeft} from './common';
 
 let id = 1;
+
+const nodeModulesRegexp = /\/node_modules\//;
 export class FileItem {
     id = id++;
     originals: FileItem[] = [];
     
     constructor(fullName: string, content: Buffer, public context: string, fromFileSystem: boolean, isSourceMap?: boolean) {
+        // console.log('create new file', fullName);
         this.fromFileSystem = fromFileSystem;
         this.setName(fullName);
         this.setContent(content);
+        this.isNodeModule = nodeModulesRegexp.test(fullName);
         this.updated = true;
     }
     
     fromFileSystem: boolean;
     fullName: string;
-    numberName: number;
+    // numberName: number;
     relativeName: string;
     updated: boolean;
-    hash: string;
     content: Buffer;
+    private _contentString: string;
+    get contentString() {
+        return this._contentString ? this._contentString : (this._contentString = this.content.toString());
+    }
+    
     sourcemap: SourceMap;
     sourcemapFile: FileItem;
     isSourceMap: boolean;
+    isNodeModule: boolean;
     
     get basename() {
         return path.basename(this.fullName);
@@ -53,18 +62,25 @@ export class FileItem {
     
     imports: Import[];
     
-    setName(fullName: string) {
+    private setName(fullName: string) {
         this.fullName = path.resolve(fullName);
         this.relativeName = path.relative(this.context, this.fullName);
     }
     
     setContent(content: string | Buffer) {
-        content = typeof content === 'string' ? new Buffer(content) : content;
-        const hash = crypto.createHash('md5').update(content.toString()).digest().toString();
-        if (hash !== this.hash) {
-            this.content = content;
-            this.hash = hash;
-            this.updated = true;
+        if (typeof content === 'string') {
+            if (!this.content || this.contentString !== content) {
+                this.content = new Buffer(content);
+                this._contentString = content;
+                this.updated = true;
+            }
+        } else {
+            const string = content.toString();
+            if (!this.content || this.contentString !== string) {
+                this.content = content;
+                this._contentString = string;
+                this.updated = true;
+            }
         }
     }
     
@@ -72,7 +88,7 @@ export class FileItem {
         await mkdirp(path.dirname(this.fullName));
         logger.success(padRight(`Emit file: ${this.relativeName}`, 40) + padLeft(formatBytes(this.content.length), 10));
         await writeFile(this.fullName, this.content);
-        this.updated = true;
+        this.updated = false;
     }
     
     toString() {
