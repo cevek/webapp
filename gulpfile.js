@@ -1,21 +1,26 @@
 'use strict';
 
-var gulp = require('gulp');
-var jade = require('gulp-jade');
-var sass = require('gulp-sass');
-var sourceMap = require('gulp-sourcemaps');
-var autoprefixer = require('gulp-autoprefixer');
-var webpack = require('webpack');
-var notifier = require('node-notifier');
-var gulpLog = require('gulplog');
-var del = require('del');
-var data = require('gulp-data');
-var hash = require('gulp-hash');
-var references = require('gulp-hash-references');
+const gulp = require('gulp');
+const jade = require('gulp-jade');
+const sass = require('gulp-sass');
+const sourceMap = require('gulp-sourcemaps');
+const autoprefixer = require('gulp-autoprefixer');
+const notifier = require('node-notifier');
+const gulpLog = require('gulplog');
+const del = require('del');
+const data = require('gulp-data');
+const hash = require('gulp-hash');
+const references = require('gulp-hash-references');
+const tsPatcher = require('ts-patcher');
+const gutil = require('gulp-util');
+const path = require("path");
+const fs = require("fs");
+const concat = require('gulp-concat');
+const mkdirp = require('mkdirp');
 
-var clientWebpackConfig = require('./webpack.config.js');
+// const clientWebpackConfig = require('./webpack.config.js');
 
-var paths = {
+const paths = {
     jade: {
         src: 'src/layout/**/*.jade',
         dest: 'dist',
@@ -32,7 +37,14 @@ var paths = {
 
     scripts: {
         watch: 'src/**/*.{ts,tsx}',
-        compiled: 'dist/*.js'
+        dest: 'dist',
+        compiled: 'dist/bundle.js',
+        vendorBundle: 'vendor.js',
+        vendor: [
+            'node_modules/react/dist/react.js',
+            'node_modules/react-dom/dist/react-dom.js',
+            'node_modules/mobx/lib/mobx.js',
+        ],
     },
 
     assets: {
@@ -45,23 +57,22 @@ function sassFunctions(options) {
     options = options || {};
     options.base = options.base || process.cwd();
 
-    var fs = require('fs');
-    var path = require('path');
-    var types = require('node-sass').types;
+    const fs = require('fs');
+    const path = require('path');
+    const types = require('node-sass').types;
 
-    var funcs = {};
+    const funcs = {};
 
-    funcs['inline-image($file)'] = function (file, done) {
-        var file = path.resolve(options.base, file.getValue());
-        var ext = file.split('.').pop();
-        ;
+    funcs['inline-image($file)'] = function (sfile, done) {
+        const file = path.resolve(options.base, sfile.getValue());
+        const ext = file.split('.').pop();
         fs.readFile(file, function (err, data) {
             if (err) {
                 return done(err);
             }
             data = new Buffer(data);
             data = data.toString('base64');
-            data = 'url(data:image/' + ext + ';base64,' + data + ')';
+            data = `url(data:image/${ext};base64,${data})`;
             data = types.String(data);
             done(data);
         });
@@ -70,85 +81,68 @@ function sassFunctions(options) {
     return funcs;
 }
 
-function handleError(error, title) {
-    notifier.notify({
-        title: title,
-        message: error
-    });
 
-    gulpLog.error(error);
-}
+let startedTasks = 0;
+gulp.task('compile-start', function (callback) {
+    if (startedTasks++ == 0) {
+        console.log('start');
+    }
+    callback();
+});
 
-function runWebpack(config, callback) {
-    webpack(config, function (error, stats) {
-        // no hard error, try to get a soft error from stats
-        if (!error) {
-            error = stats.toJson().errors[0];
-        }
+gulp.task('compile-done', function (callback) {
+    if (--startedTasks == 0) {
+        console.log('done');
+    }
+    callback();
+});
 
-        if (error) {
-            handleError(error, 'Build scripts');
-        } else {
-            gulpLog.info(stats.toString({
-                colors: true,
-                chunkModules: false,
-            }));
-        }
-
-        // task never errs in watch mode, it waits and recompiles
-        if (!config.watch && error) {
-            callback(error);
-        } else {
-            callback();
-        }
-    });
-}
 
 gulp.task('compile-styles', function () {
     return gulp.src(paths.scss.src)
-            .pipe(sourceMap.init())
-            .pipe(sass({
-                functions: sassFunctions()
-            }).on('error', sass.logError), sass({ functions: sassFunctions() }))
-            .pipe(sourceMap.write())
-            .pipe(gulp.dest('./dist'))
+        .pipe(sourceMap.init())
+        .pipe(sass({
+            functions: sassFunctions()
+        }).on('error', sass.logError), sass({functions: sassFunctions()}))
+        .pipe(sourceMap.write())
+        .pipe(gulp.dest('./dist'))
 });
 
 gulp.task('build-layouts', function () {
     return gulp.src(paths.jade.src)
-            .pipe(data(function () {
-                return {
-                    scriptPath: paths.assets.scripts,
-                    stylePath: paths.assets.styles,
-                };
-            }))
-            .pipe(jade({
-                pretty: '\t',
-            }))
-            .pipe(gulp.dest(paths.jade.dest));
+        .pipe(data(function () {
+            return {
+                scriptPath: paths.assets.scripts,
+                stylePath: paths.assets.styles,
+            };
+        }))
+        .pipe(jade({
+            pretty: '\t',
+        }))
+        .pipe(gulp.dest(paths.jade.dest));
 });
 
 gulp.task('set-styles-hash', function () {
     return gulp.src(paths.scss.compiled)
-            .pipe(hash())
-            .pipe(gulp.dest(paths.jade.dest))
-            .pipe(hash.manifest('1.json'))
-            .pipe(references(gulp.src(paths.jade.compiled)))
-            .pipe(gulp.dest(paths.jade.dest))
-            del(['dist/index.css']);
-})
+        .pipe(hash())
+        .pipe(gulp.dest(paths.jade.dest))
+        .pipe(hash.manifest('1.json'))
+        .pipe(references(gulp.src(paths.jade.compiled)))
+        .pipe(gulp.dest(paths.jade.dest))
+});
 
 gulp.task('set-scripts-hash', function () {
     return gulp.src(paths.scripts.compiled)
-            .pipe(hash())
-            .pipe(gulp.dest(paths.jade.dest))
-            .pipe(hash.manifest('1.json'))
-            .pipe(references(gulp.src(paths.jade.compiled)))
-            .pipe(gulp.dest(paths.jade.dest))
-})
+        .pipe(hash())
+        .pipe(gulp.dest(paths.jade.dest))
+        .pipe(hash.manifest('1.json'))
+        .pipe(references(gulp.src(paths.jade.compiled)))
+        .pipe(gulp.dest(paths.jade.dest))
+});
 
 gulp.task('build-client-app', function (callback) {
-    runWebpack(clientWebpackConfig, callback);
+    // runWebpack(clientWebpackConfig, callback);
+    callback();
 });
 
 gulp.task('clean', function () {
@@ -157,21 +151,101 @@ gulp.task('clean', function () {
 
 gulp.task('clean-non-hashed', function () {
     return del(['dist/bundle.js', 'dist/bundle.js.map', 'dist/index.css'])
-})
+});
+
+gulp.task('vendor-js', function () {
+    return gulp.src(paths.scripts.vendor).pipe(concat(paths.scripts.vendorBundle)).pipe(gulp.dest(paths.scripts.dest));
+});
+
+
+gulp.task('ts', function (done) {
+    // setTimeout(done, 1000);
+    processTS(false, paths.scripts.compiled, done);
+});
+
+
+gulp.task('fuck', (done) => {
+    setTimeout(done, 4000);
+});
+
 
 gulp.task('build',
-        gulp.series(
-                'clean',
-                gulp.parallel('compile-styles', 'build-client-app'),
-                'build-layouts',
-                gulp.parallel('set-styles-hash', 'set-scripts-hash'),
-                'clean-non-hashed'
-));
+    gulp.series(
+        'compile-start',
+        'clean',
+        gulp.parallel('compile-styles', gulp.series('ts', 'vendor-js') /*gulp.series('ts', 'build-client-app', 'vendor-js')*/),
+        'build-layouts',
+        //gulp.parallel('set-styles-hash', 'set-scripts-hash'),
+        'clean-non-hashed',
+        'compile-done'
+    ));
 
-gulp.task('watch', function () {
-    gulp.watch(paths.scss.watch, gulp.series('compile-styles', 'set-styles-hash'));
-    gulp.watch(paths.scripts.watch, gulp.series('build-client-app', 'set-scripts-hash'));
-    gulp.watch(paths.jade.watch, gulp.series('build-layouts'));
+
+gulp.task('watch', function (done) {
+    gulp.watch(paths.scss.watch, gulp.series('compile-start', 'compile-styles', 'set-styles-hash', 'compile-done'));
+    gulp.watch(paths.jade.watch, gulp.series('compile-start', 'build-layouts', 'compile-done'));
+    // processTS(true, paths.scripts.compiled, gulp.series('compile-start'), gulp.series('set-scripts-hash', 'compile-done'));
+    gulp.series('ts')();
 });
+
+
+function processTS(watch, outfile, done) {
+    let rootFile = '';
+
+    tsPatcher({
+        args: watch ? ['-w'] : [],
+        callback: () => {
+            console.log('Callback');
+            // done();
+        },
+
+        startCompilatation: () => {
+            // beforeTasks();
+        },
+
+        endCompilatation: (program) => {
+            console.log('endCompilatation');
+            done();
+            return;
+
+            const file = path.resolve(outfile);
+            const dirname = path.dirname(file);
+            mkdirp.sync(dirname);
+            fs.writeFileSync(file, rootFile);
+            console.log('write file', file);
+
+            const gFile = new gutil.File({
+                base: dirname,
+                cwd: __dirname,
+                path: file,
+                contents: new Buffer(rootFile)
+            });
+
+            done(null, gFile);
+
+            /*gulp.series(afterTasks, function(done){
+             console.log("Fuck");
+             done();
+             })(null, gFile);*/
+        },
+
+        fileChanged: (sourceFile, removed) => {
+            // console.log('changed', sourceFile.fileName, removed);
+        },
+
+        customReportDiagnostic: (diagnostic) => {
+            // console.log(diagnostic.file.fileName, diagnostic.messageText);
+            console.log(diagnostic);
+        },
+
+        onEmitFile: (file, data) => {
+            // callback(file, data);
+            rootFile = data;
+            console.log("ts result", file);
+            // callback(null, data);
+        }
+        // });
+    })
+}
 
 gulp.task('default', gulp.series('build', gulp.parallel('watch')));

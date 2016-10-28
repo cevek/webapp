@@ -4,16 +4,16 @@
     "target": "es5",
     "lib": ["dom", "es2015"],
     "noImplicitAny": true,
-    "sourceMap": true,
     "jsx": "react",
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
-    "outDir": "dist",
+    "sourceMap": true,
     "experimentalDecorators": true,
+    "moduleResolution": "node",
     "suppressImplicitAnyIndexErrors": true,
     "allowSyntheticDefaultImports": true
   },
   "files": [
-    "src/index.tsx"
+    "./src/index.tsx"
   ]
 }

@@ -1,5 +1,4 @@
-declare let process: any;
-const global = typeof process == 'undefined' ? window : process;
+const global = (typeof process == 'undefined' ? window : process) as any;
 if (!global.__diMap) {
     global.__diMap = new Map();
 }

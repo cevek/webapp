@@ -1,9 +1,10 @@
 import scss from 'rollup-plugin-scss';
+import sass from 'rollup-plugin-sass';
 import typescript from 'rollup-plugin-typescript';
-import image from 'rollup-plugin-image';
+// import image from 'rollup-plugin-image';
 import nodeResolve from 'rollup-plugin-node-resolve';
 import commonjs from 'rollup-plugin-commonjs'
-import cssModules from '@carrd/rollup-css-modules';
+// import cssModules from '@carrd/rollup-css-modules';
 // import stylusCssModules from 'rollup-plugin-stylus-css-modules';
 import {writeFileSync} from 'fs';
 
@@ -15,7 +16,7 @@ export default {
         typescript({
             typescript: require('typescript')
         }),
-        image(),
+        sass(),
         nodeResolve({
             jsnext: true,
             main: true,
@@ -30,9 +31,6 @@ export default {
                  'node_modules/react/react.js': ['createElement', 'Component'],
                  'node_modules/react-dom/index.js': ['render'],
             }
-        }),
-        cssModules({
-
-        }),
+        })
     ]
 }
