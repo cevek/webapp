@@ -85,6 +85,7 @@ export class Route<Props> {
     }
 
     makeRegexp() {
+        this.names = [];
         let url = '/' + this.selfUrl.replace(/(^\/+|\/+$)/g, '');
         url = url === '/' ? url : url + '/';
         if (this.parent) {
@@ -296,14 +297,14 @@ export class Router {
     }
 
     changeUrl<T>(url: Url, urlHasChanged: boolean, replace: boolean) {
-        console.log('changeUrl', url, this.url, this.url.href, url.href, this.url.state, url.state);
+        // console.log('changeUrl', url, this.url, this.url.href, url.href, this.url.state, url.state);
         this.activeFastPromise.cancel();
         this.activeFastPromise = FastPromise.resolve();
         if (!this.publicFastPromise.isPending()) {
             this.publicFastPromise = new FastPromise();
         }
         if (this.url.href === url.href && this.url.state === url.state) {
-            console.log("skip");
+            // console.log("skip");
             // restore old url
             this.history.replace(this.url);
             this.publicFastPromise.resolve();
@@ -316,13 +317,14 @@ export class Router {
                     .then(this.successTransition, this.failTransition, this);
             } else {
                 // not found anything
+                this.publicFastPromise.reject(new Error('No match routes found'));
             }
         }
         return this.publicFastPromise;
     }
 
     successTransition(transition: RouteTransition) {
-        console.log("success transition");
+        // console.log("success transition");
         this.url.apply(transition.url);
         if (!transition.urlHasChanged) {
             if (transition.replace) {
@@ -339,7 +341,7 @@ export class Router {
     }
 
     failTransition(reason: any) {
-        console.log("fail transition", reason);
+        // console.log("fail transition", reason);
         // restore old url
         this.history.replace(this.url);
         return this.publicFastPromise.reject(reason);
@@ -350,12 +352,12 @@ export class Router {
     }
 
     onPopState = () => {
-        this.changeUrl(this.history.getCurrentUrl(), true, false);
+        return this.changeUrl(this.history.getCurrentUrl(), true, false);
     };
 
     init() {
         this.history.addListener(this.onPopState);
-        this.onPopState();
+        return this.onPopState();
     }
 
     destroy() {
