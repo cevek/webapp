@@ -20,6 +20,12 @@ export class ActionButton extends React.Component<ActionButtonProps, {}> {
                 if (this.mounted) {
                     this.forceUpdate();
                 }
+            }, () => {
+                this.disabled = false;
+                called = true;
+                if (this.mounted) {
+                    this.forceUpdate();
+                }
             });
             if (!called) {
                 if (this.mounted) {
@@ -43,8 +49,7 @@ export class ActionButton extends React.Component<ActionButtonProps, {}> {
             <button
                 disabled={this.disabled}
                 onClick={this.onClick}
-                className={this.props.className}
-            >
+                className={this.props.className}>
                 {this.props.children}
             </button>
         );
